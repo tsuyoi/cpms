@@ -179,6 +179,7 @@ public class CrescoCPMSLogger implements CPMSLogger {
     }*/
 
     public void cpmsHeartbeat() {
+        logger.trace("Sending heartbeat");
         sendCPMSHeartbeat();
     }
 
@@ -259,6 +260,7 @@ public class CrescoCPMSLogger implements CPMSLogger {
     }
 
     public void cpmsTaskOutput(ScriptedTask scriptedTask, String output) {
+        logger.info("Sending output for task: {}", scriptedTask.toJson());
         sendCPMSTaskOutput(scriptedTask, output);
     }
 
