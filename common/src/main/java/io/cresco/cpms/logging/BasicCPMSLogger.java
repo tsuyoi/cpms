@@ -1,5 +1,6 @@
 package io.cresco.cpms.logging;
 
+import io.cresco.cpms.scripting.ScriptedTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,43 +11,25 @@ public class BasicCPMSLogger implements CPMSLogger {
     private static final Logger msgEventLogger = LoggerFactory.getLogger("MSGEVENT");
 
     private final Logger logger;
-    private String pipelineRunId;
-    private String taskRunId;
-    private String taskCommand;
+    private String pipelineID;
+    private String pipelineName;
+    private String jobID;
+    private String jobName;
+    private String taskID;
+    private String taskName;
+    private String runID;
+    private String runName;
 
-    public BasicCPMSLogger() {
-        this(BasicCPMSLogger.class);
-    }
-
-    public BasicCPMSLogger(String pipelineRunId) {
-        this(BasicCPMSLogger.class, pipelineRunId);
-    }
-
-    public BasicCPMSLogger(String pipelineRunId, String taskRunId) {
-        this(BasicCPMSLogger.class, pipelineRunId, taskRunId);
-    }
-
-    public BasicCPMSLogger(String pipelineRunId, String taskRunId, String taskCommand) {
-        this(BasicCPMSLogger.class, pipelineRunId, taskRunId, taskCommand);
-    }
-
-    public BasicCPMSLogger(Class logClass) {
-        this(logClass, null, null, null);
-    }
-
-    public BasicCPMSLogger(Class logClass, String pipelineRunId) {
-        this(logClass, pipelineRunId, null, null);
-    }
-
-    public BasicCPMSLogger(Class logClass, String pipelineRunId, String taskRunId) {
-        this(logClass, pipelineRunId, taskRunId, null);
-    }
-
-    public BasicCPMSLogger(Class logClass, String pipelineRunId, String taskRunId, String taskCommand) {
-        this.logger = LoggerFactory.getLogger(logClass);
-        setPipelineRunId(pipelineRunId);
-        setTaskRunId(taskRunId);
-        setTaskCommand(taskCommand);
+    public BasicCPMSLogger(BasicCPMSLoggerBuilder builder) {
+        this.logger = LoggerFactory.getLogger(builder.getCls());
+        this.pipelineID = builder.getPipelineID();
+        this.pipelineName = builder.getPipelineName();
+        this.jobID = builder.getJobID();
+        this.jobName = builder.getJobName();
+        this.taskID = builder.getTaskID();
+        this.taskName = builder.getTaskName();
+        this.runID = builder.getRunID();
+        this.runName = builder.getRunName();
     }
 
     public void trace(String message) {
@@ -85,28 +68,13 @@ public class BasicCPMSLogger implements CPMSLogger {
     }
 
     public void cpmsInfo(Map<String, String> customParams) {
-        if (getTaskCommand() == null)
-            msgEventLogger.info(String.format("[%s][%s]\n%s", getPipelineRunId(), getTaskRunId(), customParams));
-        else if (getTaskRunId() == null)
-            msgEventLogger.info(String.format("[%s]\n%s", getPipelineRunId(), customParams));
-        else
-            msgEventLogger.info(String.format("[%s][%s][%s]\n%s", getPipelineRunId(), getTaskRunId(), getTaskCommand(), customParams));
+        msgEventLogger.info(formalizeLogMessage(String.format("\n%s", customParams)));
     }
     public void cpmsInfo(String message) {
-        if (getTaskCommand() == null)
-            msgEventLogger.info(String.format("[%s][%s] %s", getPipelineRunId(), getTaskRunId(), message));
-        else if (getTaskRunId() == null)
-            msgEventLogger.info(String.format("[%s] %s", getPipelineRunId(), message));
-        else
-            msgEventLogger.info(String.format("[%s][%s][%s] %s", getPipelineRunId(), getTaskRunId(), getTaskCommand(), message));
+        msgEventLogger.info(formalizeLogMessage(message));
     }
     public void cpmsInfo(Map<String, String> customParams, String message) {
-        if (getTaskCommand() == null)
-            msgEventLogger.info(String.format("[%s][%s] %s\n%s", getPipelineRunId(), getTaskRunId(), message, customParams));
-        else if (getTaskRunId() == null)
-            msgEventLogger.info(String.format("[%s] %s\n%s", getPipelineRunId(), message, customParams));
-        else
-            msgEventLogger.info(String.format("[%s][%s][%s] %s\n%s", getPipelineRunId(), getTaskRunId(), getTaskCommand(), message, customParams));
+        msgEventLogger.info(formalizeLogMessage(String.format("%s\n%s", message, customParams)));
     }
     public void cpmsInfo(String message, Object... objects) {
         cpmsInfo(replaceBrackets(message, objects));
@@ -115,29 +83,21 @@ public class BasicCPMSLogger implements CPMSLogger {
         cpmsInfo(replaceBrackets(message, objects), customParams);
     }
 
+    public void cpmsWarn(String message) {
+        msgEventLogger.warn(formalizeLogMessage(message));
+    }
+    public void cpmsWarn(String message, Object... objects) {
+        cpmsWarn(replaceBrackets(message, objects));
+    }
+
     public void cpmsError(Map<String, String> customParams) {
-        if (getTaskCommand() == null)
-            msgEventLogger.error(String.format("[%s][%s]\n%s", getPipelineRunId(), getTaskRunId(), customParams));
-        else if (getTaskRunId() == null)
-            msgEventLogger.error(String.format("[%s]\n%s", getPipelineRunId(), customParams));
-        else
-            msgEventLogger.error(String.format("[%s][%s][%s]\n%s", getPipelineRunId(), getTaskRunId(), getTaskCommand(), customParams));
+        msgEventLogger.error(formalizeLogMessage(String.format("\n%s", customParams)));
     }
     public void cpmsError(String message) {
-        if (getTaskCommand() == null)
-            msgEventLogger.error(String.format("[%s][%s] %s", getPipelineRunId(), getTaskRunId(), message));
-        else if (getTaskRunId() == null)
-            msgEventLogger.error(String.format("[%s] %s", getPipelineRunId(), message));
-        else
-            msgEventLogger.error(String.format("[%s][%s][%s] %s", getPipelineRunId(), getTaskRunId(), getTaskCommand(), message));
+        msgEventLogger.error(formalizeLogMessage(message));
     }
     public void cpmsError(Map<String, String> customParams, String message) {
-        if (getTaskCommand() == null)
-            msgEventLogger.error(String.format("[%s][%s] %s\n%s", getPipelineRunId(), getTaskRunId(), message, customParams));
-        else if (getTaskRunId() == null)
-            msgEventLogger.error(String.format("[%s] %s\n%s", getPipelineRunId(), message, customParams));
-        else
-            msgEventLogger.error(String.format("[%s][%s][%s] %s\n%s", getPipelineRunId(), getTaskRunId(), getTaskCommand(), message, customParams));
+        msgEventLogger.error(formalizeLogMessage(String.format("%s\n%s", message, customParams)));
     }
     public void cpmsError(String message, Object... objects) {
         cpmsError(replaceBrackets(message, objects));
@@ -153,35 +113,102 @@ public class BasicCPMSLogger implements CPMSLogger {
         cpmsError(message, objects);
     }
 
-    public CPMSLogger cloneLogger(Class clazz) {
-        return new BasicCPMSLogger(clazz, getPipelineRunId(), getTaskRunId(), getTaskCommand());
+    public void cpmsTaskOutput(ScriptedTask scriptedTask, String output) {
+        msgEventLogger.info(formalizeLogMessage("TASK:\n" + scriptedTask.toJson() + "\nOUTPUT:\n" + output));
+    }
+
+    private String formalizeLogMessage(String logMessage) {
+        StringBuilder sb = new StringBuilder();
+        if (getPipelineID() != null)
+            sb.append(String.format("[P:%s:%s]", getPipelineID(), getPipelineName()));
+        if (getJobID() != null)
+            sb.append(String.format("[J:%s:%s]", getJobID(), getJobName()));
+        if (getTaskID() != null)
+            sb.append(String.format("[T:%s:%s]", getTaskID(), getTaskName()));
+        if (getRunID() != null)
+            sb.append(String.format("[R:%s:%s]", getRunName(), getRunName()));
+        if (getPipelineID() != null || getJobID() != null || getTaskID() != null || getRunID() != null)
+            sb.append(" ");
+        sb.append(logMessage);
+        return sb.toString();
+    }
+
+    public CPMSLogger cloneLogger(Class cls) {
+        return new BasicCPMSLoggerBuilder()
+                .withClass(cls)
+                .withPipelineID(getPipelineID())
+                .withPipelineName(getPipelineName())
+                .withJobID(getJobID())
+                .withJobName(getJobName())
+                .withRunID(getRunID())
+                .withRunName(getRunName())
+                .withTaskID(getTaskID())
+                .withTaskName(getTaskName())
+                .build();
+    }
+
+    public String getPipelineID() {
+        return pipelineID;
+    }
+    public void setPipelineID(String pipelineID) {
+        this.pipelineID = pipelineID;
     }
 
     @Override
-    public String getPipelineRunId() {
-        return pipelineRunId;
+    public String getPipelineName() {
+        return pipelineName;
     }
     @Override
-    public void setPipelineRunId(String pipelineRunId) {
-        this.pipelineRunId = pipelineRunId;
+    public void setPipelineName(String pipelineName) {
+        this.pipelineName = pipelineName;
+    }
+
+    public String getJobID() {
+        return jobID;
+    }
+    public void setJobID(String jobID) {
+        this.jobID = jobID;
     }
 
     @Override
-    public String getTaskRunId() {
-        return taskRunId;
+    public String getJobName() {
+        return jobName;
     }
     @Override
-    public void setTaskRunId(String taskRunId) {
-        this.taskRunId = taskRunId;
+    public void setJobName(String jobName) {
+        this.jobName = jobName;
+    }
+
+    public String getTaskID() {
+        return taskID;
+    }
+    public void setTaskID(String taskID) {
+        this.taskID = taskID;
     }
 
     @Override
-    public String getTaskCommand() {
-        return taskCommand;
+    public String getTaskName() {
+        return taskName;
     }
     @Override
-    public void setTaskCommand(String taskCommand) {
-        this.taskCommand = taskCommand;
+    public void setTaskName(String taskName) {
+        this.taskName = taskName;
+    }
+
+    public String getRunID() {
+        return runID;
+    }
+    public void setRunID(String runID) {
+        this.runID = runID;
+    }
+
+    @Override
+    public String getRunName() {
+        return runName;
+    }
+    @Override
+    public void setRunName(String runName) {
+        this.runName = runName;
     }
 
     private String replaceBrackets(String logMessage, Object... params) {

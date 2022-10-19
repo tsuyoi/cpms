@@ -5,15 +5,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.cresco.cpms</groupId>
-    <artifactId>CPMS</artifactId>
+    <artifactId>parent</artifactId>
     <packaging>pom</packaging>
     <version>0.1-SNAPSHOT</version>
 
     <modules>
-        <module>models</module>
-        <module>database</module>
         <module>common</module>
+        <module>database</module>
+        <module>docker</module>
+        <module>models</module>
+        <module>processing</module>
+        <module>storage</module>
+        <module>cresco</module>
     </modules>
+
+    <name>Cresco Pipeline Management System</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -35,10 +41,49 @@
         <junit.version>5.7.1</junit.version>
         <jboss.version>3.3.2.Final</jboss.version>
         <log4j.version>2.6.1</log4j.version>
+
+        <apache-commons-lang3.version>3.12.0</apache-commons-lang3.version>
+        <docker-client.version>8.15.0</docker-client.version>
+        <java-persistence-api.version>2.2</java-persistence-api.version>
+
+        <aws.version>1.11.371</aws.version>
+        <guava.version>18.0</guava.version>
+        <commons-compress.version>1.17</commons-compress.version>
+        <commons-io.version>2.6</commons-io.version>
+        <tika.version>1.18</tika.version>
+        <bagit.version>5.2.0</bagit.version>
+        <commons-configuratino.version>2.3</commons-configuratino.version>
+        <commons-beanutils.version>1.9.3</commons-beanutils.version>
+
+        <jackson-yaml.version>2.9.0.pr4</jackson-yaml.version>
+
+        <argparse4j.version>0.9.0</argparse4j.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- CPMS Modules -->
+            <dependency>
+                <groupId>io.cresco.cpms</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cresco.cpms</groupId>
+                <artifactId>storage</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cresco.cpms</groupId>
+                <artifactId>docker</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cresco.cpms</groupId>
+                <artifactId>processing</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- Common -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
@@ -49,6 +94,17 @@
                 <artifactId>logback-core</artifactId>
                 <version>${logback.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${apache-commons-lang3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.persistence</groupId>
+                <artifactId>javax.persistence-api</artifactId>
+                <version>${java-persistence-api.version}</version>
+            </dependency>
+            <!-- Database -->
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
@@ -84,6 +140,92 @@
                 <artifactId>hibernate-commons-annotations</artifactId>
                 <version>${hibernate.common.version}</version>
             </dependency>
+            <!-- Docker -->
+            <dependency>
+                <groupId>com.spotify</groupId>
+                <artifactId>docker-client</artifactId>
+                <version>${docker-client.version}</version>
+            </dependency>
+            <!-- Storage -->
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-s3</artifactId>
+                <version>${aws.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tika</groupId>
+                <artifactId>tika-core</artifactId>
+                <version>${tika.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>gov.loc</groupId>
+                <artifactId>bagit</artifactId>
+                <version>${bagit.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>log4j</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-configuration2</artifactId>
+                <version>${commons-configuratino.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>commons-beanutils</groupId>
+                <artifactId>commons-beanutils</artifactId>
+                <version>${commons-beanutils.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <!-- Processing -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson-yaml.version}</version>
+            </dependency>
+            <!-- Apps -->
+            <dependency>
+                <groupId>net.sourceforge.argparse4j</groupId>
+                <artifactId>argparse4j</artifactId>
+                <version>${argparse4j.version}</version>
+            </dependency>
+            <!-- Test Only -->
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
@@ -108,16 +250,71 @@
                 <version>${log4j.version}</version>
                 <scope>test</scope>
             </dependency>
+            <!-- Cresco Plugins Provided -->
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.8.5</version>
+                <!--<scope>provided</scope>-->
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.core</artifactId>
+                <version>6.0.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>osgi.cmpn</artifactId>
+                <version>6.0.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>osgi.annotation</artifactId>
+                <version>6.0.1</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.service.component.annotations</artifactId>
+                <version>1.4.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.service.metatype.annotations</artifactId>
+                <version>1.4.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.service.cm</artifactId>
+                <version>1.6.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.cresco</groupId>
+                <artifactId>library</artifactId>
+                <version>1.1-SNAPSHOT</version>
+                <scope>provided</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
+        <!--<dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.8.5</version>
             <scope>provided</scope>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.core</artifactId>
@@ -167,4 +364,26 @@
             </exclusions>
         </dependency>
     </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>${maven.assembly.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven.compiler.version}</version>
+                    <configuration>
+                        <source>${maven.compiler.source}</source>
+                        <target>${maven.compiler.target}</target>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
 </project>

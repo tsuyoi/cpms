@@ -1,0 +1,35 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%d{YYYY-MM-dd HH:mm:ss.SSS}][%-5level][%logger{15}] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="MSGONLY" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Storage Dependency Logging Overrides -->
+    <logger name="io.cresco.cpms.storage.encapsulation.LargeBagVerifier" level="error" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="io.cresco.cpms.storage.encapsulation.ManifestVerifier" level="error" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="gov.loc.repository" level="error" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
+    <!-- Docker Dependency Logging Overrides -->
+    <logger name="com.spotify.docker.client" level="ERROR" additivity="false" />
+
+    <logger name="message-only" level="info" additivity="false">
+        <appender-ref ref="MSGONLY" />
+    </logger>
+
+    <root level="trace">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

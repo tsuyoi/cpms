@@ -2,3 +2,4 @@
 *.iml
 target/
 cpms-docker-dev/
+config.properties

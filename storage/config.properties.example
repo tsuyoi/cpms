@@ -1,0 +1,9 @@
+access.key=
+secret.key=
+endpoint=s3.amazonaws.com
+region=us-east-1
+bagit.type=standard
+bagit.hashing=md5
+bagit.includehidden=true
+compression=tar
+log.level=ERROR

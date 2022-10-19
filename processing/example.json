@@ -1,0 +1,32 @@
+{
+  "id": "example_job_id_uuid",
+  "name": "ExampleJob",
+  "tasks": [
+    {
+      "id": "example_storage_task_uuid",
+      "name": "Download Samples",
+      "type": "storage",
+      "action": "download",
+      "s3_access_key": "access_key.1",
+      "s3_secret_key": "secret_key.1",
+      "s3_endpoint": "s3.amazonaws.com",
+      "s3_region": "us-east-1",
+      "s3_bucket": "sample_bucket",
+      "s3_path": "sample_prefix.tgz",
+      "local_path": "/mnt/data/processing/"
+    }, {
+      "id": "example_docker_task_uuid",
+      "name": "Add Mock Flowcell Files",
+      "type": "docker",
+      "image": "docker.image",
+      "command": "/gpackage/add_required_files.sh",
+      "binds": [
+        "/mnt/data/processing/:/gdata/input",
+        "/mnt/gpackage/stage/gpackage/:/gpackage"
+      ],
+      "envs": [
+        "some_env=env"
+      ]
+    }
+  ]
+}

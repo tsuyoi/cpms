@@ -1,5 +1,7 @@
 package io.cresco.cpms.logging;
 
+import io.cresco.cpms.scripting.ScriptedTask;
+
 import java.util.Map;
 
 public interface CPMSLogger {
@@ -18,29 +20,49 @@ public interface CPMSLogger {
     void error(String message);
     void error(String message, Object... objects);
 
-    void cpmsInfo(Map<String, String> customParams);
+    //void cpmsInfo(Map<String, String> customParams);
     void cpmsInfo(String message);
-    void cpmsInfo(Map<String, String> customParams, String message);
+    //void cpmsInfo(Map<String, String> customParams, String message);
     void cpmsInfo(String message, Object... objects);
-    void cpmsInfo(Map<String, String> customParams, String message, Object... objects);
+    //void cpmsInfo(Map<String, String> customParams, String message, Object... objects);
 
-    void cpmsError(Map<String, String> customParams);
+    void cpmsWarn(String message);
+    void cpmsWarn(String message, Object... objects);
+
+    //void cpmsError(Map<String, String> customParams);
     void cpmsError(String message);
-    void cpmsError(Map<String, String> customParams, String message);
+    //void cpmsError(Map<String, String> customParams, String message);
     void cpmsError(String message, Object... objects);
-    void cpmsError(Map<String, String> customParams, String message, Object... objects);
+    //void cpmsError(Map<String, String> customParams, String message, Object... objects);
 
     void cpmsFailure(String message);
     void cpmsFailure(String message, Object... objects);
 
+    void cpmsTaskOutput(ScriptedTask scriptedTask, String output);
+
     CPMSLogger cloneLogger(Class clazz);
 
-    String getPipelineRunId();
-    void setPipelineRunId(String pipelineRunId);
+    public String getPipelineID();
+    public void setPipelineID(String pipelineID);
 
-    String getTaskRunId();
-    void setTaskRunId(String taskRunId);
+    public String getPipelineName();
+    public void setPipelineName(String pipelineName);
 
-    String getTaskCommand();
-    void setTaskCommand(String taskCommand);
+    public String getJobID();
+    public void setJobID(String jobID);
+
+    public String getJobName();
+    public void setJobName(String jobName);
+
+    public String getRunID();
+    public void setRunID(String runID);
+
+    public String getRunName();
+    public void setRunName(String runName);
+
+    public String getTaskID();
+    public void setTaskID(String taskID);
+
+    public String getTaskName();
+    public void setTaskName(String taskName);
 }
