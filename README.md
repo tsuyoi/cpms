@@ -1,7 +1,7 @@
-# Cresco Pipeline Management System (In Development)
+# [WIP] Cresco Pipeline Management System
 
-*Note: This project is in very active development and may not currently match the README description in functionality. 
-This document can loosely be considered a roadmap for where development is going.*
+*Note: This project is in the very early stages of development. This README will continue to be updated to reflect the current and future state, 
+but the project is not currently feature-complete.*
 
 Cresco Pipeline Management System (CPMS), a workflow management system, builds on the 
 [Cresco Edge Computing Framework](http://cresco.io) to provide a simple scriptable workflow distribution framework to 
@@ -11,7 +11,7 @@ leverage edge computing to execute a pipeline consisting of jobs and tasks.
  - [Requirements](#requirements)
  - [Installation](#installation)
  - [Starting Up](#starting-up)
- - [Building Pipelines](#building-piplines)
+ - [Building Pipelines](#building-pipelines)
  - [Running Pipelines](#running-pipelines)
  - [How We Leverage Cresco and Edge Computing](#how-we-leverage-cresco-and-edge-computing)
 
@@ -20,11 +20,12 @@ leverage edge computing to execute a pipeline consisting of jobs and tasks.
   - [Cresco Agent v1.1](https://github.com/CrescoEdge/agent/releases/tag/1.1-SNAPSHOT)
 - To Build
   - Java 1.8
-  - Maven 3.6+
+  - Maven 3.6.3+
 
 ## Installation
-Build or download the cpms-processor.jar, cpms-collector.jar, cpms-api.jar, and (optionally) cpms-watcher.jar files and 
-load them on one or more Cresco agents running on infrastruture suitable to your pipeline requirements.
+Build or download the `cpms-processor.jar`, `cpms-collector.jar`, `cpms-controller.jar`, `cpms-api.jar`, and 
+(optionally) `cpms-watcher.jar` files and load them on one or more Cresco agents running on infrastructure suitable to 
+your pipeline requirements.
 
 ## Starting Up
 
@@ -42,6 +43,7 @@ With the system installed and running, you're ready to start creating pipelines 
 your pipelines using the web interface, but they can be generated manually as well.
 
 ### Using the web interface
+*Show web interface pipeline creation...*
 
 ### Manual JSON File(s)
 This is mainly used as a way to easily transfer pipelines from one installation to another, but you can manually
