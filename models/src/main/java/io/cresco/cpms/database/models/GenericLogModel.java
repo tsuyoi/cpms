@@ -1,9 +1,9 @@
 package io.cresco.cpms.database.models;
 
-import org.hibernate.annotations.CreationTimestamp;
-
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.util.Date;
 
 @SuppressWarnings("unused")
