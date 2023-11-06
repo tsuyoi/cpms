@@ -13,6 +13,7 @@ import java.util.Map;
 
 public class DockerTaskScript extends ScriptedTaskScript {
     private static final Type dockerTaskScriptType = new TypeToken<DockerTaskScript>() {}.getType();
+    private static final String DEFAULT_DOCKER_RUNTIME = "runc";
 
     public static DockerTaskScript getInstance(String dockerTaskJSON) throws ScriptException {
         try {
@@ -32,6 +33,9 @@ public class DockerTaskScript extends ScriptedTaskScript {
     @SerializedName("user")
     public String user;
 
+    @SerializedName("runtime")
+    public String runtime = DEFAULT_DOCKER_RUNTIME;
+
     @SerializedName("binds")
     public List<String> binds = new ArrayList<>();
 
@@ -47,6 +51,7 @@ public class DockerTaskScript extends ScriptedTaskScript {
         toPrint.put("image", this.image);
         toPrint.put("command", this.command);
         toPrint.put("user", this.user);
+        toPrint.put("runtime", this.runtime);
         toPrint.put("binds", this.binds);
         toPrint.put("envs", this.envs);
         return toPrint.toString();

@@ -11,53 +11,78 @@
 
     <modules>
         <module>common</module>
+        <module>common-cresco</module>
         <module>database</module>
         <module>docker</module>
         <module>models</module>
         <module>processing</module>
         <module>storage</module>
-        <module>cresco</module>
+        <module>controller</module>
     </modules>
 
     <name>Cresco Pipeline Management System</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.assembly.version>3.1.1</maven.assembly.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.version>3.8.0</maven.compiler.version>
-        <maven.bundle.compiler.version>4.0.0</maven.bundle.compiler.version>
-        <log4j.version>2.11.2</log4j.version>
-        <lang3.version>3.9</lang3.version>
-        <logback.version>1.1.3</logback.version>
-        <com.amazonaws>1.11.371</com.amazonaws>
-        <mysql.version>8.0.19</mysql.version>
-        <mssql.version>8.4.1.jre8</mssql.version>
-        <h2.version>1.4.192</h2.version>
-        <hibernate.version>5.4.30.Final</hibernate.version>
-        <hibernate.common.version>5.1.2.Final</hibernate.common.version>
-        <hibernate.validator.version>5.4.3.Final</hibernate.validator.version>
-        <junit.version>5.7.1</junit.version>
-        <jboss.version>3.3.2.Final</jboss.version>
-        <log4j.version>2.6.1</log4j.version>
+        <maven.assembly.version>3.6.0</maven.assembly.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.version>3.11.0</maven.compiler.version>
+        <felix.maven.bundle.compiler.version>5.1.9</felix.maven.bundle.compiler.version>
+        <lang3.version>3.13.0</lang3.version>
+        <logback.version>1.4.11</logback.version>
 
-        <apache-commons-lang3.version>3.12.0</apache-commons-lang3.version>
+        <!-- Module versions -->
+        <cpms.common.version>0.1-SNAPSHOT</cpms.common.version>
+        <cpms.common-cresco.version>0.1-SNAPSHOT</cpms.common-cresco.version>
+        <cpms.controller.version>0.1-SNAPSHOT</cpms.controller.version>
+        <cpms.database.version>0.1-SNAPSHOT</cpms.database.version>
+        <cpms.docker.version>0.1-SNAPSHOT</cpms.docker.version>
+        <cpms.models.version>0.1-SNAPSHOT</cpms.models.version>
+        <cpms.processing.version>0.1-SNAPSHOT</cpms.processing.version>
+        <cpms.storage.version>0.1-SNAPSHOT</cpms.storage.version>
+
+        <!-- Database -->
+        <mysql.version>8.1.0</mysql.version>
+        <mssql.version>12.4.1.jre11</mssql.version>
+        <h2.version>2.2.222</h2.version>
+        <hibernate.version>6.3.0.Final</hibernate.version>
+        <hibernate-annotations.version>6.0.6.Final</hibernate-annotations.version>
+        <c3p0.version>0.9.5.5</c3p0.version>
+        <hibernate.common.version>6.0.6.Final</hibernate.common.version>
+        <hibernate.validator.version>8.0.1.Final</hibernate.validator.version>
+        <jakarta.validation.version>3.0.2</jakarta.validation.version>
+        <junit.version>5.10.0</junit.version>
+        <jboss.version>3.5.3.Final</jboss.version>
+        <log4j.version>2.20.0</log4j.version>
+
+        <!-- Docker -->
+        <apache-commons-lang3.version>3.13.0</apache-commons-lang3.version>
         <docker-client.version>8.15.0</docker-client.version>
         <java-persistence-api.version>2.2</java-persistence-api.version>
 
-        <aws.version>1.11.371</aws.version>
-        <guava.version>18.0</guava.version>
-        <commons-compress.version>1.17</commons-compress.version>
-        <commons-io.version>2.6</commons-io.version>
-        <tika.version>1.18</tika.version>
+        <!-- Storage -->
+        <aws.version>1.12.543</aws.version>
+        <awsbom.version>2.21.4</awsbom.version>
+        <aws.crt.version>0.27.7</aws.crt.version>
+        <gcloud.version>26.25.0</gcloud.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <commons-compress.version>1.23.0</commons-compress.version>
+        <commons-io.version>2.13.0</commons-io.version>
+        <tika.version>2.9.0</tika.version>
         <bagit.version>5.2.0</bagit.version>
-        <commons-configuratino.version>2.3</commons-configuratino.version>
-        <commons-beanutils.version>1.9.3</commons-beanutils.version>
+        <commons-configuration.version>2.9.0</commons-configuration.version>
+        <commons-text.version>1.10.0</commons-text.version>
+        <commons-beanutils.version>1.9.4</commons-beanutils.version>
+        <commons-collections4.version>4.4</commons-collections4.version>
 
-        <jackson-yaml.version>2.9.0.pr4</jackson-yaml.version>
-
+        <jackson-yaml.version>2.15.2</jackson-yaml.version>
+        <!-- Apps Only -->
         <argparse4j.version>0.9.0</argparse4j.version>
+        <!-- Cresco -->
+        <gson.version>2.10.1</gson.version>
+        <json-smart.version>2.5.0</json-smart.version>
     </properties>
 
     <dependencyManagement>
@@ -66,22 +91,37 @@
             <dependency>
                 <groupId>io.cresco.cpms</groupId>
                 <artifactId>common</artifactId>
-                <version>${project.version}</version>
+                <version>${cpms.common.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cresco.cpms</groupId>
+                <artifactId>models</artifactId>
+                <version>${cpms.models.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cresco.cpms</groupId>
+                <artifactId>database</artifactId>
+                <version>${cpms.database.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.cresco.cpms</groupId>
+                <artifactId>common-cresco</artifactId>
+                <version>${cpms.common-cresco.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.cresco.cpms</groupId>
                 <artifactId>storage</artifactId>
-                <version>${project.version}</version>
+                <version>${cpms.storage.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.cresco.cpms</groupId>
                 <artifactId>docker</artifactId>
-                <version>${project.version}</version>
+                <version>${cpms.docker.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.cresco.cpms</groupId>
                 <artifactId>processing</artifactId>
-                <version>${project.version}</version>
+                <version>${cpms.processing.version}</version>
             </dependency>
             <!-- Common -->
             <dependency>
@@ -106,8 +146,8 @@
             </dependency>
             <!-- Database -->
             <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
                 <version>${mysql.version}</version>
             </dependency>
             <dependency>
@@ -121,17 +161,17 @@
                 <version>${h2.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate</groupId>
+                <groupId>org.hibernate.orm</groupId>
                 <artifactId>hibernate-core</artifactId>
                 <version>${hibernate.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate</groupId>
+                <groupId>org.hibernate.orm</groupId>
                 <artifactId>hibernate-c3p0</artifactId>
                 <version>${hibernate.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate</groupId>
+                <groupId>org.hibernate.validator</groupId>
                 <artifactId>hibernate-validator</artifactId>
                 <version>${hibernate.validator.version}</version>
             </dependency>
@@ -140,17 +180,84 @@
                 <artifactId>hibernate-commons-annotations</artifactId>
                 <version>${hibernate.common.version}</version>
             </dependency>
+            <dependency>
+                <groupId>jakarta.validation</groupId>
+                <artifactId>jakarta.validation-api</artifactId>
+                <version>${jakarta.validation.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mchange</groupId>
+                <artifactId>c3p0</artifactId>
+                <version>0.9.5.5</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mchange</groupId>
+                <artifactId>mchange-commons-java</artifactId>
+                <version>0.2.20</version>
+            </dependency>
             <!-- Docker -->
             <dependency>
                 <groupId>com.spotify</groupId>
                 <artifactId>docker-client</artifactId>
                 <version>${docker-client.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-core</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-annotations</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-databind</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson-yaml.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson-yaml.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson-yaml.version}</version>
             </dependency>
             <!-- Storage -->
             <dependency>
                 <groupId>com.amazonaws</groupId>
                 <artifactId>aws-java-sdk-s3</artifactId>
                 <version>${aws.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awsbom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk.crt</groupId>
+                <artifactId>aws-crt</artifactId>
+                <version>${aws.crt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>${gcloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>com.google.guava</groupId>
@@ -171,12 +278,22 @@
                 <groupId>org.apache.tika</groupId>
                 <artifactId>tika-core</artifactId>
                 <version>${tika.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>gov.loc</groupId>
                 <artifactId>bagit</artifactId>
                 <version>${bagit.version}</version>
                 <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-databind</artifactId>
+                    </exclusion>
                     <exclusion>
                         <groupId>commons-logging</groupId>
                         <artifactId>*</artifactId>
@@ -194,7 +311,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-configuration2</artifactId>
-                <version>${commons-configuratino.version}</version>
+                <version>${commons-configuration.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>commons-logging</groupId>
@@ -203,15 +320,29 @@
                 </exclusions>
             </dependency>
             <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-text</artifactId>
+                <version>${commons-text.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>commons-beanutils</groupId>
                 <artifactId>commons-beanutils</artifactId>
                 <version>${commons-beanutils.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>commons-collections</groupId>
+                        <artifactId>commons-collections</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>commons-logging</groupId>
                         <artifactId>commons-logging</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>${commons-collections4.version}</version>
             </dependency>
             <!-- Processing -->
             <dependency>
@@ -236,7 +367,6 @@
                 <groupId>org.jboss.logging</groupId>
                 <artifactId>jboss-logging</artifactId>
                 <version>${jboss.version}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
@@ -254,7 +384,7 @@
             <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
-                <version>2.8.5</version>
+                <version>${gson.version}</version>
                 <!--<scope>provided</scope>-->
             </dependency>
             <dependency>
@@ -294,11 +424,20 @@
                 <scope>provided</scope>
             </dependency>
             <dependency>
+                <groupId>net.minidev</groupId>
+                <artifactId>json-smart</artifactId>
+                <version>${json-smart.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.cresco</groupId>
                 <artifactId>library</artifactId>
                 <version>1.1-SNAPSHOT</version>
                 <scope>provided</scope>
                 <exclusions>
+                    <exclusion>
+                        <groupId>net.minidev</groupId>
+                        <artifactId>json-smart</artifactId>
+                    </exclusion>
                     <exclusion>
                         <groupId>com.fasterxml.jackson.core</groupId>
                         <artifactId>*</artifactId>
@@ -309,60 +448,7 @@
     </dependencyManagement>
 
     <dependencies>
-        <!--<dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.8.5</version>
-            <scope>provided</scope>
-        </dependency>-->
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.core</artifactId>
-            <version>6.0.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>osgi.cmpn</artifactId>
-            <version>6.0.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>osgi.annotation</artifactId>
-            <version>6.0.1</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.service.component.annotations</artifactId>
-            <version>1.4.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.service.metatype.annotations</artifactId>
-            <version>1.4.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.service.cm</artifactId>
-            <version>1.6.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.cresco</groupId>
-            <artifactId>library</artifactId>
-            <version>1.0-SNAPSHOT</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+
     </dependencies>
 
     <build>
@@ -378,9 +464,13 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven.compiler.version}</version>
                     <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
+                        <release>${maven.compiler.release}</release>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.felix</groupId>
+                    <artifactId>maven-bundle-plugin</artifactId>
+                    <version>${felix.maven.bundle.compiler.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>

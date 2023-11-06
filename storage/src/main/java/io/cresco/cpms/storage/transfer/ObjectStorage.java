@@ -821,12 +821,7 @@ public class ObjectStorage {
     }
 
     public void updateLogger(CPMSLogger logger) {
-        // Todo: update this with actual logger identifiers when done
-        /*this.logger.setFlowCellID(logger.getFlowCellID());
-        this.logger.setSampleID(logger.getSampleID());
-        this.logger.setRequestID(logger.getRequestID());
-        this.logger.setStage(logger.getStage());
-        this.logger.setStep(logger.getStep());*/
+        this.logger = logger.cloneLogger(ObjectStorage.class);
     }
 
     /*

@@ -1,7 +1,5 @@
-package io.cresco.cpms.cresco;
+package io.cresco.cpms.logging;
 
-import io.cresco.cpms.logging.BasicCPMSLogger;
-import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.library.plugin.PluginBuilder;
 import io.cresco.library.utilities.CLogger;
 

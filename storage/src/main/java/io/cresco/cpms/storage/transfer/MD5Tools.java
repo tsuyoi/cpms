@@ -74,6 +74,55 @@ public class MD5Tools {
             }
         }
         return mpHash;
+    }String getMultiCheckSum(String fileName, long minimumUploadPartSize) throws IOException {
+        logger.debug("Call to getMultiCheckSum [filename = {}]", fileName);
+        String mpHash = null;
+        FileInputStream fis = null;
+        List<String> hashList = new ArrayList<>();
+
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+
+            File inputFile = new File(fileName);
+            long optimalPartSize = calculateOptimalPartSize(inputFile.length(), minimumUploadPartSize);
+            fis = new FileInputStream(inputFile);
+            boolean isReading = true;
+            long bytesRead = 0;
+            while (isReading) {
+                byte[] bs;
+
+                long remaining = inputFile.length() - bytesRead;
+                if (remaining > optimalPartSize) {
+                    bs = new byte[(int)optimalPartSize];
+                    bytesRead = bytesRead + fis.read(bs, 0, (int)optimalPartSize);
+                } else {
+                    bs = new byte[(int)remaining];
+                    bytesRead = bytesRead + fis.read(bs, 0, (int)remaining);
+                }
+                byte[] hash = md.digest(bs);
+                hashList.add(getMD5(hash));
+                if (bytesRead == inputFile.length()) {
+                    isReading = false;
+                }
+            }
+            mpHash = calculateChecksumForMultipartUpload(hashList);
+        } catch (IOException ioe) {
+            // Blah
+        } catch (Exception ex) {
+            System.out.println("MD5Tools : getMultiPartHash Error " + ex.toString());
+        } finally {
+            try {
+                assert fis != null;
+                fis.close();
+            } catch (AssertionError ae) {
+                logger.error("getMultiCheckSum FileInputStream closed prematurely");
+            } catch (IOException ioe) {
+                logger.error("getMultiCheckSum : fis.close() (IO) {}", ioe.getMessage());
+            } catch (Exception e) {
+                logger.error("getMultiCheckSum : fis.close() {}", e.getMessage());
+            }
+        }
+        return mpHash;
     }
 
     String getMultiCheckSum(String fileName, TransferManager manager) throws IOException {
@@ -196,6 +245,13 @@ public class MD5Tools {
             System.out.println("ObjectEngine : checkSum");
         }
         return checksum;
+    }
+
+    private long calculateOptimalPartSize(long contentLength, long minimumUploadPartSize) {
+        double optimalPartSize = (double)contentLength / (double)MAXIMUM_UPLOAD_PARTS;
+        // round up so we don't push the upload over the maximum number of parts
+        optimalPartSize = Math.ceil(optimalPartSize);
+        return (long)Math.max(optimalPartSize, minimumUploadPartSize);
     }
 
     private long calculateOptimalPartSize(long contentLength, TransferManagerConfiguration configuration) {

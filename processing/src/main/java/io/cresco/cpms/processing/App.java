@@ -1,12 +1,13 @@
 package io.cresco.cpms.processing;
 
-import io.cresco.cpms.logging.BasicCPMSLogger;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.scripting.ScriptException;
 import io.cresco.cpms.scripting.ScriptedJob;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,24 +16,30 @@ import java.nio.file.Paths;
 public class App {
     //private static final Logger logger = LoggerFactory.getLogger(io.cresco.cpms.storage.App.class);
     private static final CPMSLogger logger = new BasicCPMSLoggerBuilder().withClass(App.class).withPipelineID("test_pipeline_uuid").withPipelineName("Test-Pipeline").build();
-    private static final Logger simpleLogger = LoggerFactory.getLogger("message-only");
 
     public static void main(String[] args) throws IOException, ScriptException {
-        String examplePipeline = new String(Files.readAllBytes(Paths.get(args[0])));
-        ScriptedJob scriptedJob = new ScriptedJob(examplePipeline);
+        ArgumentParser parser = ArgumentParsers.newFor("Cresco Pipeline Management System - Process Executor")
+                .build()
+                .defaultHelp(true)
+                .description("Executes a job from an input .json file.");
+        parser.addArgument("script");
+        Namespace ns = null;
+        try {
+            ns = parser.parseArgs(args);
+        } catch (ArgumentParserException e) {
+            parser.handleError(e);
+            System.exit(1);
+        }
+        String script = ns.getString("script");
+        String examplePipeline = new String(Files.readAllBytes(Paths.get(script)));
+        executeJob(examplePipeline);
+    }
+
+    private static void executeJob(String job) throws ScriptException{
+        ScriptedJob scriptedJob = new ScriptedJob(job);
         logger.cpmsInfo(String.valueOf(scriptedJob));
         ProcessingEngine processingEngine = new ProcessingEngine(logger);
         logger.cpmsInfo("Script run result: {}", processingEngine.runScriptedJob(scriptedJob));
-        /*ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        ProcessingJob processingJob = mapper.readValue(new File("example.yaml"), ProcessingJob.class);
-        System.out.println(processingJob);
-        System.out.println("Validating provided yaml file");
-        try {
-            processingJob.validate();
-            System.out.println("Processing job in [example.yaml] is valid");
-        } catch (ProcessingJobException e) {
-            System.err.printf("Validation failed: %s%n", e.getMessage());
-        }*/
     }
 
     /*public static void main(String[] args) {

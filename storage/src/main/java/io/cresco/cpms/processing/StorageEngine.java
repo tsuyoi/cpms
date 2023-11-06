@@ -1,68 +1,92 @@
 package io.cresco.cpms.processing;
 
-import io.cresco.cpms.logging.BasicCPMSLogger;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.scripting.StorageTask;
-import io.cresco.cpms.statics.CPMSStatics;
 import io.cresco.cpms.storage.encapsulation.Archiver;
-import io.cresco.cpms.storage.transfer.ObjectStorage;
+import io.cresco.cpms.storage.encapsulation.ArchiverBuilder;
+import io.cresco.cpms.storage.transfer.ObjectStorageBuilder;
+import io.cresco.cpms.storage.transfer.ObjectStorageV2;
+import io.cresco.cpms.storage.utilities.StorageParameters;
+import io.cresco.cpms.storage.utilities.StorageProvider;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import software.amazon.awssdk.services.s3.model.Bucket;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Map;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 @SuppressWarnings({"unused", "WeakerAccess", "BooleanMethodIsAlwaysInverted", "SameParameterValue"})
 public class StorageEngine {
     private CPMSLogger logger;
-    private Archiver archiver;
-    private ObjectStorage objectStorage;
 
     /*
         Constructors
      */
 
-    public StorageEngine(ObjectStorage objectStorage, Archiver archiver) {
-        this(objectStorage, archiver, new BasicCPMSLoggerBuilder().withClass(StorageEngine.class).build());
+    public StorageEngine() {
+        this(new BasicCPMSLoggerBuilder().withClass(StorageEngine.class).build());
     }
 
-    public StorageEngine(ObjectStorage objectStorage, Archiver archiver,
-                         CPMSLogger logger) throws IllegalArgumentException {
+    public StorageEngine(CPMSLogger logger) {
         setLogger(logger);
-        setObjectStorage(objectStorage);
-        setArchiver(archiver);
     }
 
     public boolean runStorageJob(StorageTask storageTask) {
+        logger.debug("runStorageJob({})", storageTask);
         if (storageTask == null) {
             logger.cpmsError("Submitted storage job cannot be null");
             return false;
         }
-        if (!objectStorage.doesBucketExist(storageTask.getS3Bucket())) {
-            logger.cpmsError("S3 bucket [{}] is not accessible from this account",
-                    storageTask.getS3Bucket());
-            return false;
-        }
         switch(storageTask.getAction()) {
-            case "upload":
-                if (!Files.exists(storageTask.getLocalPath())) {
+            case "list": {
+                logger.info("List task");
+                StorageParameters remoteStorageParameters = new StorageParameters(storageTask.getRemotePath());
+                logger.trace("Remote Storage Provider: {}", remoteStorageParameters.storageProvider);
+                logger.trace("Remote Bucket: {}", remoteStorageParameters.bucket);
+                logger.trace("Remote Prefix: {}", remoteStorageParameters.prefix);
+                if (remoteStorageParameters.storageProvider == StorageProvider.S3) {
+                    if (remoteStorageParameters.prefix != null)
+                        return listS3BucketObjectsWithPrefix(remoteStorageParameters.bucket,
+                                remoteStorageParameters.prefix);
+                    else if (remoteStorageParameters.bucket != null)
+                        return listS3BucketObjects(remoteStorageParameters.bucket);
+                    else
+                        return listS3Buckets();
+                } else {
+                    logger.error("Storage provider [{}] is not implemented yet!",
+                            remoteStorageParameters.storageProvider.name());
+                    return false;
+                }
+            }
+            case "upload": {
+                logger.info("Upload task");
+                if (storageTask.getLocalPath() == null || !Files.exists(storageTask.getLocalPath())) {
                     logger.cpmsError("Local path to upload [{}] does not exist", storageTask.getLocalPath());
                     return false;
                 }
-                if (Files.isDirectory(storageTask.getLocalPath()))
-                    return uploadBaggedDirectory(storageTask.getLocalPath(), storageTask.getS3Bucket(),
-                            storageTask.getS3Path());
-                else
-                    return uploadSingleFile(storageTask.getLocalPath(), storageTask.getS3Bucket(),
-                            storageTask.getS3Path());
-            case "download":
-                if (!storageTask.getS3Path().endsWith("/")) {
-                    if (!objectStorage.doesObjectExist(storageTask.getS3Bucket(), storageTask.getS3Path())) {
+                if (storageTask.getRemotePath() == null || storageTask.getRemotePath().isEmpty()) {
+                    logger.cpmsError("Remote path to upload cannot be empty");
+                    return false;
+                }
+                StorageParameters remoteStorageParameters = new StorageParameters(storageTask.getRemotePath());
+                if (remoteStorageParameters.storageProvider == StorageProvider.S3) {
+                    return uploadToS3(storageTask.getLocalPath(), remoteStorageParameters.bucket,
+                            remoteStorageParameters.prefix);
+                } else {
+                    logger.error("Storage provider [{}] is not implemented yet!",
+                            remoteStorageParameters.storageProvider.name());
+                    return false;
+                }
+            }
+            case "download": {
+                logger.info("Download task");
+                /*if (!storageTask.getS3Path().endsWith("/")) {
+                    if (objectStorage.headObject(storageTask.getS3Bucket(), storageTask.getS3Path()) == null) {
                         logger.cpmsError("S3 object [{}/{}] does not exist to download",
                                 storageTask.getS3Bucket(), storageTask.getS3Path());
                         return false;
@@ -82,21 +106,27 @@ public class StorageEngine {
                             storageTask.getLocalPath());
                 else
                     return downloadBaggedFile(storageTask.getS3Bucket(), storageTask.getS3Path(),
-                            storageTask.getLocalPath());
-            case "delete":
-                if (storageTask.getS3Path().endsWith("/")) {
+                            storageTask.getLocalPath());*/
+                return true;
+            }
+            case "delete": {
+                logger.info("Delete task");
+                /*if (storageTask.getS3Path().endsWith("/")) {
                     return objectStorage.deleteBucketContents(storageTask.getS3Bucket(), storageTask.getS3Path());
                 } else {
-                    if (!objectStorage.doesObjectExist(storageTask.getS3Bucket(), storageTask.getS3Path())) {
+                    if (objectStorage.headObject(storageTask.getS3Bucket(), storageTask.getS3Path()) == null) {
                         logger.cpmsError("S3 object [{}/{}] does not exist to download",
                                 storageTask.getS3Bucket(), storageTask.getS3Path());
                         return false;
                     }
                     return objectStorage.deleteBucketObject(storageTask.getS3Bucket(), storageTask.getS3Path());
-                }
-            default:
+                }*/
+                return true;
+            }
+            default: {
                 logger.cpmsError("An invalid StorageJob type [{}] was encountered", storageTask.getAction());
                 return false;
+            }
         }
     }
 
@@ -104,88 +134,137 @@ public class StorageEngine {
         Public Instance Methods
      */
 
-    private boolean uploadSingleFile(Path inPath, String bucket, String s3Prefix) {
-        logger.trace("uploadSingleFile({},{},{})", inPath, bucket, s3Prefix);
-        if (!checkSetup(bucket, inPath, false)) {
-            logger.cpmsError("Failed bagged upload setup verification");
-            return false;
-        }
-        if (s3Prefix == null) {
-            logger.cpmsError("No s3 prefix supplied for single file upload");
-            return false;
-        }
-        long uncompressedSize = FileUtils.sizeOf(inPath.toFile());
-        logger.cpmsInfo("Uploading [{}] to [{}/{}]", inPath, bucket, s3Prefix);
+    private boolean listS3Buckets() {
+        logger.trace("listS3Buckets()");
         try {
-            return objectStorage.uploadFile(inPath, bucket, s3Prefix, uncompressedSize, false);
-        } catch (IOException e) {
-            logger.cpmsError("Failed to upload file [{}] to S3 [{}/{}]", inPath, bucket, s3Prefix);
-            logger.debug("IOException: {}", ExceptionUtils.getStackTrace(e));
+            ObjectStorageV2 objectStorage = new ObjectStorageBuilder().withLogger(logger).build();
+            objectStorage.listBuckets().stream().map(Bucket::name).forEach(System.out::println);
+            return true;
+        } catch (Exception e) {
             return false;
         }
     }
 
-    private boolean uploadBaggedDirectory(Path inPath, String bucket, String s3Prefix) {
-        logger.trace("uploadBaggedDirectory('{}','{}','{}')", inPath, bucket, s3Prefix);
-        if (!checkSetup(bucket, inPath, true)) {
-            logger.cpmsError("Failed bagged upload setup verification");
-            return false;
-        }
-        if (s3Prefix == null) {
-            logger.cpmsError("No S3 prefix supplied for bagged upload");
-            return false;
-        }
-        long uncompressedSize = FileUtils.sizeOfDirectory(inPath.toFile());
-        logger.trace("uncompressedSize: {}", humanReadableByteCount(uncompressedSize));
+    private boolean listS3BucketObjects(String bucket) {
+        logger.trace("listS3BucketObjects({})", bucket);
         try {
-            long freeSpace = Files.getFileStore(inPath).getUsableSpace();
-            logger.trace("freeSpace: {}", humanReadableByteCount(freeSpace));
-            long requiredSpace = uncompressedSize + (1024 * 1024 * 1024);
-            logger.trace("requiredSpace: {}", humanReadableByteCount(requiredSpace));
-            if (requiredSpace > freeSpace) {
-                logger.cpmsError("Not enough free space to bag up [{}], needs [{}] has [{}]",
-                                inPath.toAbsolutePath(), humanReadableByteCount(requiredSpace),
-                                humanReadableByteCount(freeSpace));
+            ObjectStorageV2 objectStorage = new ObjectStorageBuilder().withLogger(logger).build();
+            objectStorage.listBucketObjects(bucket).stream().map(S3Object::key).forEach(System.out::println);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean listS3BucketObjectsWithPrefix(String bucket, String prefix) {
+        logger.trace("listS3BucketObjectsWithPrefix({},{})", bucket, prefix);
+        try {
+            ObjectStorageV2 objectStorage = new ObjectStorageBuilder().withLogger(logger).build();
+            objectStorage.listBucketObjects(bucket, prefix).stream().map(S3Object::key).forEach(System.out::println);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean uploadToS3(Path localPath, String bucket, String prefix) {
+        logger.trace("uploadToS3({},{},{})", localPath, bucket, prefix);
+        try {
+            if (!Files.exists(localPath)) {
+                logger.cpmsError("Local path to upload [{}] does not exist", localPath);
                 return false;
             }
-        } catch (IOException e) {
-            logger.cpmsError("Failed to locate path to upload [{}]", inPath);
+            String key = (prefix == null || prefix.isEmpty()) ?
+                    String.format("%s", localPath.getFileName()) :
+                    String.format("%s/%s", prefix, localPath.getFileName());
+            if (Files.isRegularFile(localPath)) {
+                return uploadSingleFileToS3(localPath, bucket, key);
+            } else {
+                return uploadBaggedDirectoryToS3(localPath, bucket, prefix);
+            }
+        } catch (Exception e) {
+            logger.cpmsError("Failed to upload path [{}] to S3 [{}/{}]", localPath, bucket, prefix);
+            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
             return false;
-        }
-        logger.cpmsInfo("Bagging up [{}]", inPath);
-        Path bagged = archiver.bagItUp(inPath);
-        if (bagged == null || !Files.exists(bagged)) {
-            logger.cpmsError("Failed to bag up directory [{}]", inPath);
-            return false;
-        }
-        logger.cpmsInfo("Verifying bagging on [{}]", inPath);
-        if (!archiver.verifyBag(inPath)) {
-            logger.cpmsError("Failed to bag up directory [{}]", inPath);
-            archiver.debagify(inPath);
-            return false;
-        }
-        logger.cpmsInfo("Boxing up [{}]", inPath.toAbsolutePath());
-        Path boxed = archiver.archive(bagged.toFile());
-        logger.cpmsInfo("Reverting bagging on directory [{}]", inPath);
-        archiver.debagify(inPath);
-        if (boxed == null || !Files.exists(boxed)) {
-            logger.cpmsError("Failed to box up directory [{}]", inPath);
-            return false;
-        }
-        logger.cpmsInfo("Uploading [{}] to [{}/{}]", boxed, bucket, s3Prefix);
-        boolean success = false;
-        try {
-            success = objectStorage.uploadFile(boxed, bucket, s3Prefix, uncompressedSize, false);
-            Files.delete(boxed);
-            return success;
-        } catch (IOException e) {
-            logger.cpmsError("Failed to upload file [{}] to S3 [{}/{}]", boxed, bucket, s3Prefix);
-            logger.debug("IOException: {}", ExceptionUtils.getStackTrace(e));
-            return success;
         }
     }
 
-    private boolean downloadDirectoryOfBaggedFiles(String bucket, String s3Prefix, Path outPath) {
+    private boolean uploadSingleFileToS3(Path localFile, String bucket, String key) {
+        logger.trace("uploadSingleFileToS3({},{},{})", localFile, bucket, key);
+        try {
+            ObjectStorageV2 objectStorage = new ObjectStorageBuilder().withLogger(logger).build();
+            return objectStorage.uploadFile(localFile, bucket, key);
+        } catch (Exception e) {
+            logger.cpmsError("Failed to upload file [{}] to S3 [{}/{}]", localFile, bucket, key);
+            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
+            return false;
+        }
+    }
+
+    private boolean uploadBaggedDirectoryToS3(Path localPath, String bucket, String prefix) {
+        logger.trace("uploadBaggedDirectoryToS3('{}','{}','{}')", localPath, bucket, prefix);
+        try {
+            Archiver archiver = new ArchiverBuilder().withLogger(logger).build();
+            ObjectStorageV2 objectStorage = new ObjectStorageBuilder().withLogger(logger).build();
+            long uncompressedSize = FileUtils.sizeOfDirectory(localPath.toFile());
+            logger.trace("uncompressedSize: {}", humanReadableByteCount(uncompressedSize));
+            try {
+                long freeSpace = Files.getFileStore(localPath).getUsableSpace();
+                logger.trace("freeSpace: {}", humanReadableByteCount(freeSpace));
+                long requiredSpace = uncompressedSize + (1024 * 1024 * 1024);
+                logger.trace("requiredSpace: {}", humanReadableByteCount(requiredSpace));
+                if (requiredSpace > freeSpace) {
+                    logger.cpmsError("Not enough free space to bag up [{}], needs [{}] has [{}]",
+                            localPath.toAbsolutePath(), humanReadableByteCount(requiredSpace),
+                            humanReadableByteCount(freeSpace));
+                    return false;
+                }
+            } catch (IOException e) {
+                logger.cpmsError("Failed to locate path to upload [{}]", localPath);
+                return false;
+            }
+            logger.cpmsInfo("Bagging up [{}]", localPath);
+            Path bagged = archiver.bagItUp(localPath);
+            if (bagged == null || !Files.exists(bagged)) {
+                logger.cpmsError("Failed to bag up directory [{}]", localPath);
+                return false;
+            }
+            logger.cpmsInfo("Verifying bagging on [{}]", localPath);
+            if (!archiver.verifyBag(localPath)) {
+                logger.cpmsError("Failed to bag up directory [{}]", localPath);
+                archiver.debagify(localPath);
+                return false;
+            }
+            logger.cpmsInfo("Boxing up [{}]", localPath.toAbsolutePath());
+            Path boxed = archiver.archive(bagged.toFile());
+            logger.cpmsInfo("Reverting bagging on directory [{}]", localPath);
+            archiver.debagify(localPath);
+            if (boxed == null || !Files.exists(boxed)) {
+                logger.cpmsError("Failed to box up directory [{}]", localPath);
+                return false;
+            }
+            String key = (prefix == null || prefix.isEmpty()) ?
+                    String.format("%s", boxed.getFileName()) :
+                    String.format("%s/%s", prefix, boxed.getFileName());
+            logger.cpmsInfo("Uploading [{}] to [{}/{}]", boxed, bucket, key);
+            boolean success = false;
+            try {
+                success = objectStorage.uploadFile(boxed, bucket, key);
+                Files.delete(boxed);
+                return success;
+            } catch (IOException e) {
+                logger.cpmsError("Failed to upload file [{}] to S3 [{}/{}]", boxed, bucket, key);
+                logger.debug("IOException: {}", ExceptionUtils.getStackTrace(e));
+                return success;
+            }
+        } catch (Exception e) {
+            logger.cpmsError("Failed to upload bagged directory [{}] to S3 [{}/{}]", localPath, bucket, prefix);
+            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
+            return false;
+        }
+    }
+
+    /*private boolean downloadDirectoryOfBaggedFiles(String bucket, String s3Prefix, Path outPath) {
         logger.trace("downloadDirectoryOfBaggedFiles('{}','{}','{}')", bucket, s3Prefix, outPath);
         if (!checkSetup(bucket, outPath, true)) {
             logger.cpmsError("Failed bagged download setup verification");
@@ -195,10 +274,11 @@ public class StorageEngine {
             s3Prefix += "/";
         long downloadSize = 0L;
         long largestObject = 0L;
-        for (Map.Entry<String, Long> object : objectStorage.listBucketObjectsWithSize(bucket, s3Prefix).entrySet()) {
-            downloadSize += object.getValue();
-            if (object.getValue() > largestObject)
-                largestObject = object.getValue();
+        List<S3Object> s3Objects = objectStorage.listBucketObjects(bucket, s3Prefix);
+        for (S3Object s3Object : s3Objects) {
+            downloadSize += s3Object.size();
+            if (s3Object.size() > largestObject)
+                largestObject = s3Object.size();
         }
         logger.trace("downloadSize: {}", humanReadableByteCount(downloadSize));
         logger.trace("largestObject: {}", humanReadableByteCount(largestObject));
@@ -217,7 +297,9 @@ public class StorageEngine {
             logger.cpmsError("Invalid path provided: {}", outPath.toAbsolutePath());
             return false;
         }
-        for (String objectName : objectStorage.listBucketObjects(bucket, s3Prefix)) {
+        for (S3Object s3Object : s3Objects) {
+            int prefixLength = s3Object.key().lastIndexOf("/") + 1;
+            String objectName = s3Object.key().substring(prefixLength);
             Path boxedPath = outPath.resolve(objectName);
             Path parentFolder = boxedPath.getParent();
             try {
@@ -234,9 +316,9 @@ public class StorageEngine {
             }
         }
         return true;
-    }
+    }*/
 
-    private boolean downloadBaggedFile(String bucket, String objectName, Path outPath) {
+    /*private boolean downloadBaggedFile(String bucket, String objectName, Path outPath) {
         logger.trace("downloadBaggedFile('{}','{}','{}')", bucket, objectName, outPath);
         logger.trace("Checking setup");
         if (!checkSetup(bucket, outPath, true)) {
@@ -244,26 +326,21 @@ public class StorageEngine {
             return false;
         }
         logger.trace("Getting object size");
-        long downloadSize = objectStorage.getObjectSize(bucket, objectName);
+        HeadObjectResponse s3Object = objectStorage.headObject(bucket, objectName);
+        long downloadSize = s3Object.contentLength();
         if (downloadSize < 0L) {
             logger.cpmsError("Object [{}/{}] does not exist or has an invalid size", bucket, objectName);
             return false;
         }
         logger.trace("Getting object uncompressed size tag");
         long uncompressedSize = 2 * downloadSize;
-        String uncompressedSizeString = objectStorage.getObjectTag(bucket, objectName,
-                CPMSStatics.UNCOMPRESSED_SIZE_METADATA_TAG_KEY);
-        if (uncompressedSizeString == null)
-            logger.warn("[{}/{}] is missing the 'uncompressedSize' metadata tag, " +
-                            "assuming twice the download size to be safe", bucket, objectName);
-        else {
-            try {
-                uncompressedSize = Long.parseLong(uncompressedSizeString);
-            } catch (NumberFormatException e) {
-                logger.warn("[{}/{}] has an invalid 'uncompressedSize' metadata tag [{}], " +
-                                "assuming twice the download size to be safe",
-                        bucket, objectName, uncompressedSizeString);
-            }
+        try {
+            if (s3Object.hasMetadata() && s3Object.metadata().containsKey(CPMSStatics.UNCOMPRESSED_SIZE_METADATA_TAG_KEY))
+                uncompressedSize = Long.parseLong(s3Object.metadata().get(CPMSStatics.UNCOMPRESSED_SIZE_METADATA_TAG_KEY));
+       } catch (NumberFormatException e) {
+            logger.warn("[{}/{}] has an invalid 'uncompressedSize' metadata tag [{}], " +
+                            "assuming twice the download size to be safe",
+                    bucket, objectName, s3Object.metadata().get(CPMSStatics.UNCOMPRESSED_SIZE_METADATA_TAG_KEY));
         }
         logger.trace("Formatting paths");
         int prefix = objectName.lastIndexOf("/") + 1;
@@ -330,7 +407,7 @@ public class StorageEngine {
             archiver.debagify(unboxedPath);
         }
         return true;
-    }
+    }*/
 
     public CPMSLogger getLogger() {
         return logger;
@@ -341,70 +418,12 @@ public class StorageEngine {
     }
 
     public void updateLogger(CPMSLogger logger) {
-        // Todo: Rebuild this section
-        /*this.logger.setFlowCellID(logger.getFlowCellID());
-        this.logger.setSampleID(logger.getSampleID());
-        this.logger.setRequestID(logger.getRequestID());
-        this.logger.setStage(logger.getStage());
-        this.logger.setStep(logger.getStep());*/
-        this.objectStorage.updateLogger(logger);
-        this.archiver.updateLogger(logger);
-    }
-
-    public ObjectStorage getObjectStorage() {
-        return objectStorage;
-    }
-    public void setObjectStorage(ObjectStorage objectStorage) throws IllegalArgumentException {
-        if (objectStorage == null)
-            throw new IllegalArgumentException("ObjectStorage instance cannot be null");
-        this.objectStorage = objectStorage;
-    }
-
-    public Archiver getArchiver() {
-        return archiver;
-    }
-    public void setArchiver(Archiver archiver) {
-        if (archiver == null)
-            throw new IllegalArgumentException("Archiver instance cannot be null");
-        this.archiver = archiver;
+        this.logger = logger.cloneLogger(StorageEngine.class);
     }
 
     /*
         Private Helper Functions
      */
-
-    private boolean checkSetup(String bucket, Path path, boolean isDirectory) {
-        logger.trace("checkSetup('{}','{}')", bucket, path);
-        if (archiver == null) {
-            logger.error("You must configure your archival settings prior to use");
-            return false;
-        }
-        if (objectStorage == null) {
-            logger.error("You must configure your object storage settings prior to use");
-            return false;
-        }
-        if (bucket == null || bucket.equals("") || !objectStorage.doesBucketExist(bucket)) {
-            logger.error("You must supply a valid bucket name");
-            return false;
-        }
-        if (path == null) {
-            logger.error("You must supply a valid path to work with");
-            return false;
-        }
-        if (!Files.exists(path)) {
-            logger.error("Path [{}] does not exist", path);
-            return false;
-        }
-        if (isDirectory && !Files.isDirectory(path)) {
-            logger.error("Path [{}] is not a directory", path);
-            return false;
-        }
-        if (!isDirectory && !Files.isRegularFile(path)) {
-            logger.error("Path [{}] is not a regular file", path);
-            return false;
-        }
-        return true;
-    }
 
     private boolean moveToFolder(Path srcFolder, Path dstFolder) {
         try {
@@ -468,7 +487,7 @@ public class StorageEngine {
     private void deleteDirectory(Path folder) {
         logger.trace("deleteFolder({})", folder);
         try {
-            Files.walkFileTree(folder, new SimpleFileVisitor<Path>() {
+            Files.walkFileTree(folder, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     Files.delete(file);

@@ -1,13 +1,14 @@
 package io.cresco.cpms.storage;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
 import com.google.gson.Gson;
+import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
+import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.processing.StorageEngine;
 import io.cresco.cpms.scripting.ScriptException;
 import io.cresco.cpms.scripting.StorageTask;
 import io.cresco.cpms.storage.encapsulation.Archiver;
-import io.cresco.cpms.storage.transfer.ObjectStorage;
+import io.cresco.cpms.storage.transfer.ObjectStorageV2;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
@@ -22,27 +23,24 @@ import org.slf4j.LoggerFactory;
 import software.amazon.ion.NullValueException;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class App {
-    private static final Logger logger = LoggerFactory.getLogger(App.class);
+    private static final CPMSLogger logger = new BasicCPMSLoggerBuilder().withClass(App.class).build();
     private static final Logger simpleLogger = LoggerFactory.getLogger("message-only");
 
     public static void main(String[] args) {
-        ArgumentParser parser = ArgumentParsers.newFor("ORIEN Pipeline Management System - Data Manipulator").build()
+        ArgumentParser parser = ArgumentParsers.newFor("Cresco Pipeline Management System - Storage").build()
                 .defaultHelp(true)
-                .description("Downloads and restores genomics pipeline data to the local filesystem.");
+                .description("Interacts with storage");
         parser.addArgument("-v", "--verbose").action(Arguments.storeTrue());
         parser.addArgument("-C", "--credentials")
                 .setDefault("config.properties")
                 .help("Configuration file holding credential information.");
-        parser.addArgument("-A", "--accesskey");
-        parser.addArgument("-S", "--secretkey");
-        parser.addArgument("-E", "--endpoint");
-        parser.addArgument("-R", "--region");
-        parser.addArgument("name").nargs("?");
         parser.addArgument("command").nargs("?");
         parser.addArgument("parameters").nargs("*");
         Namespace ns = null;
@@ -52,27 +50,58 @@ public class App {
             parser.handleError(e);
             System.exit(1);
         }
+
         Boolean verbose = ns.getBoolean("verbose");
-        if (verbose) {
-            LoggerContext loggerContext = (LoggerContext)LoggerFactory.getILoggerFactory();
-            ch.qos.logback.classic.Logger tmpLogger = loggerContext.getLogger("root");
-            tmpLogger.setLevel(Level.toLevel("TRACE"));
-        }
-        String name = ns.getString("name"), command = ns.getString("command"),
-                credentials = ns.getString("credentials"),
-                accessKey = ns.getString("accesskey"), secretKey = ns.getString("secretkey"),
-                endpoint = ns.getString("endpoint"), region = ns.getString("region")
+        String command = ns.getString("command"),
+                credentials = ns.getString("credentials")
                         ;
         List<String> parameters = ns.getList("parameters");
+
+        if (verbose) {
+            final ch.qos.logback.classic.Logger meLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("MSGEVENT");
+            meLogger.setLevel(Level.toLevel("TRACE"));
+            final ch.qos.logback.classic.Logger appLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(App.class);
+            appLogger.setLevel(Level.toLevel("TRACE"));
+            final ch.qos.logback.classic.Logger osLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(ObjectStorageV2.class);
+            osLogger.setLevel(Level.toLevel("TRACE"));
+            final ch.qos.logback.classic.Logger arcLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Archiver.class);
+            arcLogger.setLevel(Level.toLevel("TRACE"));
+            final ch.qos.logback.classic.Logger seLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StorageEngine.class);
+            seLogger.setLevel(Level.toLevel("TRACE"));
+        }
 
         logger.trace("Checking for a command");
         if (command == null) {
             simpleLogger.info("Commands:");
-            simpleLogger.info("\t- upload <local_path_or_file> <bucket> [object_prefix]");
-            simpleLogger.info("\t- download <bucket> <object_prefix_or_key> <local_path>");
-            simpleLogger.info("\t- delete <bucket> <object_prefix_or_key>");
+            simpleLogger.info("\t- list <path>");
+            simpleLogger.info("\t- upload <local_path_or_file> <remote_path>");
+            simpleLogger.info("\t- download <remote_path_or_object> <local_path>");
+            simpleLogger.info("\t- copy <source_path_or_object> <destination_path>");
             return;
         }
+        logger.debug("Command: {}", command);
+        logger.debug("Parameters: {}", parameters);
+        switch (command) {
+            case "list":
+                if (parameters.size() != 1) {
+                    simpleLogger.info("list usage: <path>");
+                    return;
+                }
+                break;
+            case "upload":
+                if (parameters.size() < 2 || parameters.size() > 3) {
+                    simpleLogger.info("upload usage: <local_path_or_file> <remote_path>");
+                    return;
+                }
+                break;
+            case "download":
+                if (parameters.size() != 3) {
+                    simpleLogger.info("download usage: <remote_path_or_object> <local_path>");
+                    return;
+                }
+                break;
+        }
+
 
         logger.trace("Checking for config.properties file");
         File configFile = new File(credentials);
@@ -80,70 +109,57 @@ public class App {
             Configurations configs = new Configurations();
             try {
                 Configuration config = configs.properties(configFile);
-                if (config.containsKey("log.level")) {
-                    LoggerContext loggerContext = (LoggerContext)LoggerFactory.getILoggerFactory();
-                    ch.qos.logback.classic.Logger tmpLogger = loggerContext.getLogger("root");
-                    tmpLogger.setLevel(Level.toLevel(config.getString("log.level")));
-                }
-                if (config.containsKey("access.key")) {
-                    logger.trace("Config properties: " + config.getString("access.key"));
-                    accessKey = config.getString("access.key");
-                }
-                if (config.containsKey("secret.key")) {
-                    secretKey = config.getString("secret.key");
-                }
-                if (config.containsKey("endpoint")) {
-                    endpoint = config.getString("endpoint");
-                }
-                if (config.containsKey("region")) {
-                    region = config.getString("region");
+                if (config.containsKey("log.level") && !verbose) {
+                    final ch.qos.logback.classic.Logger meLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("MSGEVENT");
+                    meLogger.setLevel(Level.toLevel(config.getString("log.level")));
+                    final ch.qos.logback.classic.Logger appLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(App.class);
+                    appLogger.setLevel(Level.toLevel(config.getString("log.level")));
+                    final ch.qos.logback.classic.Logger osLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(ObjectStorageV2.class);
+                    osLogger.setLevel(Level.toLevel(config.getString("log.level")));
+                    final ch.qos.logback.classic.Logger arcLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Archiver.class);
+                    arcLogger.setLevel(Level.toLevel(config.getString("log.level")));
+                    final ch.qos.logback.classic.Logger seLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StorageEngine.class);
+                    seLogger.setLevel(Level.toLevel(config.getString("log.level")));
                 }
             } catch (ConfigurationException e) {
                 logger.error("Error with your config.properties file.");
             }
         }
-        ObjectStorage objectStorage;
-        try {
-            objectStorage = new ObjectStorage(accessKey, secretKey, endpoint, region);
-        } catch (NullValueException | IllegalArgumentException e) {
-            logger.error("Error building objectStorage : {}", e.getMessage());
-            return;
-        }
-        Archiver archiver;
-        try {
-            archiver = new Archiver();
-        } catch (NullValueException | IllegalArgumentException e) {
-            logger.error("Error building archiver : {}", e.getMessage());
-            return;
-        }
+        logger.trace("Building StorageEngine instance");
         StorageEngine storageEngine;
         try {
-            storageEngine = new StorageEngine(objectStorage, archiver);
+            storageEngine = new StorageEngine(logger);
         } catch (NullValueException | IllegalArgumentException e) {
             logger.error("Error building storage engine : {}", e.getMessage());
             return;
         }
+        logger.trace("Building storage task");
         Gson gson = new Gson();
         Map<String, String> storageTaskJSON = new HashMap<>();
-        storageTaskJSON.put("name", name);
+        storageTaskJSON.put("id", "cli-task-id");
+        storageTaskJSON.put("name", "cli-task-name");
         storageTaskJSON.put("type", "storage");
-        storageTaskJSON.put("s3_access_key", accessKey);
-        storageTaskJSON.put("s3_secret_key", secretKey);
-        storageTaskJSON.put("s3_endpoint", endpoint);
-        storageTaskJSON.put("s3_region", region);
         storageTaskJSON.put("action", command);
-        StorageTask storageTask = null;
+        StorageTask storageTask;
         logger.trace("JSON: {}", storageTaskJSON);
-        logger.trace("Parameters: {}", parameters);
+        boolean success = false;
         try {
             switch (command) {
+                case "list":
+                    storageTaskJSON.put("remote_path", parameters.get(0));
+                    success = storageEngine.runStorageJob(new StorageTask(storageTaskJSON));
+                    break;
                 case "upload":
+                    storageTaskJSON.put("local_path", parameters.get(0));
+                    storageTaskJSON.put("remote_path", parameters.get(1));
+                    Path localFile = Paths.get(parameters.get(1));
+                    if (parameters.size() == 3)
+                        storageTaskJSON.put("s3_path", String.format("%s/%s", parameters.get(2), localFile.getFileName()));
+                    else
+                        storageTaskJSON.put("s3_path", localFile.getFileName().toString());
+                    success = storageEngine.runStorageJob(new StorageTask(storageTaskJSON));
                     break;
                 case "download":
-                    if (parameters.size() != 3) {
-                        simpleLogger.info("download usage: <bucket> <object_prefix_or_key> <local_path>");
-                        return;
-                    }
                     storageTaskJSON.put("s3_bucket", parameters.get(0));
                     storageTaskJSON.put("s3_path", parameters.get(1));
                     storageTaskJSON.put("local_path", parameters.get(2));
@@ -151,16 +167,15 @@ public class App {
                     System.out.println(storageTaskJSONStr);
                     storageTask = new StorageTask(storageTaskJSONStr);
                     System.out.println(storageTask);
-                    break;
-                case "delete":
+                    success = storageEngine.runStorageJob(storageTask);
                     break;
                 default:
                     break;
             }
-            /*if (storageEngine.runStorageJob(storageTask))
-                simpleLogger.info("Successfully completed storage job");
+            if (success)
+                simpleLogger.info("\nSuccessfully completed storage job");
             else
-                simpleLogger.error("Failed to complete storage job. Please rerun using -v for more information.");*/
+                simpleLogger.error("\nFailed to complete storage job. Please rerun using -v for more information.");
         } catch (ScriptException e) {
             System.err.println(e.getMessage());
         }

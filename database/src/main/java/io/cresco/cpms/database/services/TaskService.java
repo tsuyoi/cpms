@@ -6,11 +6,10 @@ import io.cresco.cpms.database.utilities.SessionFactoryManager;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
+import org.hibernate.query.criteria.HibernateCriteriaBuilder;
+import org.hibernate.query.criteria.JpaCriteriaQuery;
+import org.hibernate.query.criteria.JpaRoot;
 import org.hibernate.resource.transaction.spi.TransactionStatus;
-
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
 
 @SuppressWarnings("unused")
 public class TaskService {
@@ -38,7 +37,7 @@ public class TaskService {
         try {
             session.getTransaction().begin();
             object = new Task(pipeline, name, script);
-            session.save( object );
+            session.persist( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
@@ -63,9 +62,9 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<Task> q = b.createQuery(Task.class);
-            Root<Task> r = q.from(Task.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<Task> q = b.createQuery(Task.class);
+            JpaRoot<Task> r = q.from(Task.class);
             q.select(r).where(b.equal(r.get("id"), id));
             Query<Task> query = session.createQuery(q);
             Task object = query.uniqueResult();
@@ -95,9 +94,9 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<Task> q = b.createQuery(Task.class);
-            Root<Task> r = q.from(Task.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<Task> q = b.createQuery(Task.class);
+            JpaRoot<Task> r = q.from(Task.class);
             q.select(r).where(b.and(b.equal(r.get("pipeline"), pipeline), b.equal(r.get("name"), name)));
             Query<Task> query = session.createQuery(q);
             Task object = query.uniqueResult();
@@ -125,7 +124,7 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            session.update( object );
+            session.merge( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
@@ -153,8 +152,8 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -180,8 +179,8 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -210,7 +209,7 @@ public class TaskService {
         try {
             session.getTransaction().begin();
             TaskRun object = new TaskRun(pipelineRun, task);
-            session.save( object );
+            session.persist( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
@@ -235,9 +234,9 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<TaskRun> q = b.createQuery(TaskRun.class);
-            Root<TaskRun> r = q.from(TaskRun.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<TaskRun> q = b.createQuery(TaskRun.class);
+            JpaRoot<TaskRun> r = q.from(TaskRun.class);
             q.select(r).where(b.equal(r.get("id"), id));
             Query<TaskRun> query = session.createQuery(q);
             TaskRun object = query.uniqueResult();
@@ -269,8 +268,8 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.save( new TaskRunLog(taskRun, state, message) );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.persist( new TaskRunLog(taskRun, state, message) );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -298,8 +297,8 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.save( new TaskRunOutput(taskRun, output) );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.persist( new TaskRunOutput(taskRun, output) );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -326,8 +325,8 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -351,8 +350,8 @@ public class TaskService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {

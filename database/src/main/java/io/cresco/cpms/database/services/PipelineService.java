@@ -7,11 +7,10 @@ import io.cresco.cpms.database.utilities.SessionFactoryManager;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
+import org.hibernate.query.criteria.HibernateCriteriaBuilder;
+import org.hibernate.query.criteria.JpaCriteriaQuery;
+import org.hibernate.query.criteria.JpaRoot;
 import org.hibernate.resource.transaction.spi.TransactionStatus;
-
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
 
 @SuppressWarnings("unused")
 public class PipelineService {
@@ -31,13 +30,14 @@ public class PipelineService {
         try {
             session.getTransaction().begin();
             object = new Pipeline(name, script);
-            session.save( object );
+            session.persist( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
             if (session.getTransaction().getStatus() == TransactionStatus.ACTIVE ||
                     session.getTransaction().getStatus() == TransactionStatus.MARKED_ROLLBACK)
                 session.getTransaction().rollback();
+            e.printStackTrace();
             return null;
         } finally {
             try {
@@ -54,9 +54,9 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<Pipeline> q = b.createQuery(Pipeline.class);
-            Root<Pipeline> r = q.from(Pipeline.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<Pipeline> q = b.createQuery(Pipeline.class);
+            JpaRoot<Pipeline> r = q.from(Pipeline.class);
             q.select(r).where(b.equal(r.get("id"), id));
             Query<Pipeline> query = session.createQuery(q);
             Pipeline object = query.uniqueResult();
@@ -82,9 +82,9 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<Pipeline> q = b.createQuery(Pipeline.class);
-            Root<Pipeline> r = q.from(Pipeline.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<Pipeline> q = b.createQuery(Pipeline.class);
+            JpaRoot<Pipeline> r = q.from(Pipeline.class);
             q.select(r).where(b.equal(r.get("name"), name));
             Query<Pipeline> query = session.createQuery(q);
             Pipeline object = query.uniqueResult();
@@ -110,7 +110,7 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            session.update( object );
+            session.merge( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
@@ -136,8 +136,8 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -161,8 +161,8 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -187,7 +187,7 @@ public class PipelineService {
         try {
             session.getTransaction().begin();
             PipelineRun object = new PipelineRun(pipeline);
-            session.save( object );
+            session.persist( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
@@ -210,9 +210,9 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<PipelineRun> q = b.createQuery(PipelineRun.class);
-            Root<PipelineRun> r = q.from(PipelineRun.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<PipelineRun> q = b.createQuery(PipelineRun.class);
+            JpaRoot<PipelineRun> r = q.from(PipelineRun.class);
             q.select(r).where(b.equal(r.get("id"), id));
             Query<PipelineRun> query = session.createQuery(q);
             PipelineRun object = query.uniqueResult();
@@ -241,8 +241,8 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -266,8 +266,8 @@ public class PipelineService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {

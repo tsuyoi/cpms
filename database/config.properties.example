@@ -1,0 +1,51 @@
+###################
+##### General #####
+###################
+
+### Required Parameters
+db_type =
+db_dbname =
+db_user =
+db_password =
+
+### Optional Parameters
+# db_c3p0_min_size = 10
+# db_c3p0_max_size = 20
+# db_c3p0_max_statements = 50
+# db_c3p0_acquire_increment = 1
+# db_c3p0_idle_test_period = 3000
+# db_c3p0_timeout = 1800
+# db_hbm2ddl_auto = false
+# db_show_sql = false
+
+##############
+##### H2 #####
+##############
+
+### Required Parameters
+# db_filepath =
+
+### Optional Parameters
+
+######################
+##### SQL Server #####
+######################
+
+### Required Parameters
+# db_server =
+
+### Optional Parameters
+# db_port = 1433
+
+#################
+##### MySQL #####
+#################
+
+### Required Parameters
+# db_server =
+
+### Optional Parameters
+# db_port = 3306
+# db_char_enc = UTF-8
+# db_timezone = UTC
+# db_auto_rec = true

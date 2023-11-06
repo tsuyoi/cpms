@@ -18,6 +18,7 @@ public class DockerTask implements ScriptedTask {
     private final String image;
     private final String command;
     private final String user;
+    private final String runtime;
     private final List<String> binds = new ArrayList<>();
     private final List<String> envs = new ArrayList<>();
     private final String dockerTaskJSON;
@@ -47,6 +48,7 @@ public class DockerTask implements ScriptedTask {
         this.image = validateImageName(dockerTaskScript.image);
         this.command = dockerTaskScript.command;
         this.user = dockerTaskScript.user;
+        this.runtime = dockerTaskScript.runtime;
         for (String bind : dockerTaskScript.binds)
             addBind(bind);
         for (String env : dockerTaskScript.envs)
@@ -72,7 +74,7 @@ public class DockerTask implements ScriptedTask {
     }
 
     public HostConfig getHostConfig() {
-        return HostConfig.builder().binds(binds).build();
+        return HostConfig.builder().binds(binds).runtime(runtime).build();
     }
 
     public ContainerConfig getContainerConfig() {

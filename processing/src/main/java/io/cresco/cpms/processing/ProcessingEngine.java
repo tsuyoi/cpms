@@ -39,12 +39,15 @@ public class ProcessingEngine {
     public long runScriptedJob(ScriptedJob scriptedJob) {
         logger.setJobID(scriptedJob.getId());
         logger.setJobName(scriptedJob.getName());
-        logger.cpmsInfo("Test");
         for (ScriptedTask scriptedTask : scriptedJob.getTasks()) {
             long taskRet = runScriptedTask(scriptedTask);
             logger.cpmsInfo("Task Return Code: {}", taskRet);
+            if (taskRet != 0) {
+                logger.cpmsFailure("Task execution failed, please see logs for details");
+                return taskRet;
+            }
         }
-        return -1;
+        return 0;
     }
 
     public long runScriptedTask(ScriptedTask scriptedTask) {
@@ -58,7 +61,6 @@ public class ProcessingEngine {
                 break;
             case "docker":
                 logger.info("Docker task");
-                //logger.cpmsInfo(String.valueOf(scriptedTask));
                 DockerEngine dockerEngine = new DockerEngine(logger);
                 taskRetCode = dockerEngine.runDockerJob((DockerTask) scriptedTask);
                 break;

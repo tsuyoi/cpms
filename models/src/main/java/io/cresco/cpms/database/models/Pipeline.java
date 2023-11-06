@@ -1,10 +1,13 @@
 package io.cresco.cpms.database.models;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @SuppressWarnings("unused")
 @Entity
@@ -41,5 +44,16 @@ public class Pipeline extends GenericModel {
     }
     public void setScript(String script) {
         this.script = script;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("Pipeline (");
+        if (getName() != null)
+            sb.append(String.format("Name:%s", getName()));
+        if (getScript() != null)
+            sb.append(String.format(",Script:%s", getScript()));
+        sb.append(")");
+        return sb.toString();
     }
 }

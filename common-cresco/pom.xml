@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>parent</artifactId>
+        <groupId>io.cresco.cpms</groupId>
+        <version>0.1-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>common-cresco</artifactId>
+    <version>0.1-SNAPSHOT</version>
+    <packaging>bundle</packaging>
+
+    <name>Cresco Framework Integrations</name>
+    <description>Cresco-related common code for CPMS</description>
+
+    <properties>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.cresco.cpms</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+        <!-- Cresco -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.cmpn</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.annotation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.component.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.metatype.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.cm</artifactId>
+        </dependency>
+        <!-- CVE-2021-31684 Vulnerability -->
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+            <version>2.4.9</version>
+        </dependency>
+        <dependency>
+            <groupId>io.cresco</groupId>
+            <artifactId>library</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.minidev</groupId>
+                    <artifactId>json-smart</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
+                        <Bundle-Name>cpms.common-cresco</Bundle-Name>
+                        <Bundle-Description>CPMS Cresco Common Libraries</Bundle-Description>
+                        <Bundle-Vendor>Cresco.io</Bundle-Vendor>
+                        <Bundle-Version>${project.version}-${maven.build.timestamp}</Bundle-Version>
+                        <Import-Package>*;resolution:=optional</Import-Package>
+                        <Export-Package>io.cresco.cpms.*;</Export-Package>
+                        <Embed-Dependency>!org.osgi.*;!osgi.cmpn.*;!library;*</Embed-Dependency>
+                        <Provide-Capability>osgi.service;objectClass=task.TaskService</Provide-Capability>
+                        <Bundle-RequiredExecutionEnvironment>JavaSE-11</Bundle-RequiredExecutionEnvironment>
+                    </instructions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

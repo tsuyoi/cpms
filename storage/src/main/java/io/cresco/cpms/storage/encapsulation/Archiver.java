@@ -9,6 +9,9 @@ import gov.loc.repository.bagit.reader.BagReader;
 import io.cresco.cpms.logging.BasicCPMSLogger;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
+import io.cresco.cpms.statics.ArchiveCompression;
+import io.cresco.cpms.statics.BagItHashingAlgorithm;
+import io.cresco.cpms.statics.BagItType;
 import io.cresco.cpms.statics.CPMSStatics;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -36,40 +39,24 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 @SuppressWarnings({"unused", "WeakerAccess", "UnusedReturnValue", "SameParameterValue"})
 public class Archiver {
     private CPMSLogger logger;
-    private String bagitType;
-    private String bagitHashing;
-    private boolean bagitHiddenFiles;
-    private String archiveCompression;
+    private final BagItType bagitType;
+    private final BagItHashingAlgorithm bagitHashing;
+    private final boolean bagitHiddenFiles;
+    private final ArchiveCompression archiveCompression;
 
-    public Archiver() {
-        this(CPMSStatics.DEFAULT_BAGIT_TYPE, CPMSStatics.DEFAULT_BAGIT_HASHING, CPMSStatics.DEFAULT_HIDDEN_FILES,
-                CPMSStatics.DEFAULT_ARCHIVE_COMPRESSION);
+    public Archiver(ArchiverBuilder builder) {
+        this.bagitType = builder.getBagitType();
+        this.bagitHashing = builder.getBagitHashingAlgorithm();
+        this.bagitHiddenFiles = builder.isBagitHiddenFiles();
+        this.archiveCompression = builder.getArchiveCompression();
+        setLogger(builder.getLogger());
     }
 
-    public Archiver(String bagitType, String bagitHashing, boolean bagitHiddenFiles, String archiveCompression) {
-        logger = new BasicCPMSLoggerBuilder().withClass(Archiver.class).build();
-        this.bagitType = bagitType;
-        this.bagitHashing = bagitHashing;
-        this.bagitHiddenFiles = bagitHiddenFiles;
-        this.archiveCompression = archiveCompression;
-    }
-
-    public Archiver(CPMSLogger logger) {
-        this();
-        setLogger(logger);
-    }
-
-    public Archiver(String bagitType, String bagitHashing, boolean bagitHiddenFiles, String archiveCompression,
-                    CPMSLogger logger) {
-        this(bagitType, bagitHashing, bagitHiddenFiles, archiveCompression);
-        setLogger(logger);
-    }
-
-    private String getCompressionFileExtension(String compressionType) {
+    private String getCompressionFileExtension(ArchiveCompression compressionType) {
         switch (compressionType) {
-            case "tar":
+            case TAR:
                 return ".tar";
-            case "gzip":
+            case GZIP:
                 return ".tar.gz";
             default:
                 return null;
@@ -181,16 +168,16 @@ public class Archiver {
         if (isBag(folder) || isPartialBag(folder))
             debagify(folder);
         List<SupportedAlgorithm> algorithms = new ArrayList<>();
-        if (bagitHashing.equals("sha512"))
-            algorithms.add(StandardSupportedAlgorithms.SHA512);
-        if (bagitHashing.equals("sha256"))
-            algorithms.add(StandardSupportedAlgorithms.SHA256);
-        if (bagitHashing.equals("sha1"))
-            algorithms.add(StandardSupportedAlgorithms.SHA1);
-        if (bagitHashing.equals("md5"))
+        if (bagitHashing == BagItHashingAlgorithm.MD5)
             algorithms.add(StandardSupportedAlgorithms.MD5);
+        if (bagitHashing == BagItHashingAlgorithm.SHA1)
+            algorithms.add(StandardSupportedAlgorithms.SHA1);
+        if (bagitHashing == BagItHashingAlgorithm.SHA256)
+            algorithms.add(StandardSupportedAlgorithms.SHA256);
+        if (bagitHashing == BagItHashingAlgorithm.SHA512)
+            algorithms.add(StandardSupportedAlgorithms.SHA512);
         switch (bagitType) {
-            case "dotfile":
+            case DotFile:
                 try {
                     logger.trace("Creating .bagit archive in [{}]", folder);
                     BagCreator.createDotBagit(folder, algorithms, bagitHiddenFiles);
@@ -202,7 +189,7 @@ public class Archiver {
                     return null;
                 }
                 break;
-            case "standard":
+            case Standard:
                 try {
                     logger.trace("Creating standard BagIt archive in [{}]", folder);
                     BagCreator.bagInPlace(folder, algorithms, bagitHiddenFiles);
@@ -407,16 +394,14 @@ public class Archiver {
         try {
             Path path;
             switch (archiveCompression) {
-                case "tar":
+                case TAR:
                     path = Paths.get(String.format("%s%s", files[0].getAbsolutePath(), ".tar"));
                     pack(path, files);
                     return path;
-                case "gzip":
+                case GZIP:
                     path = Paths.get(String.format("%s%s", files[0].getAbsolutePath(), ".tar.gz"));
                     compress(path, files);
                     return path;
-                case "none":
-                    return null;
                 default:
                     logger.error("Supplied archive type [{}] is not currently supported", archiveCompression);
                     return null;

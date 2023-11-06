@@ -24,4 +24,14 @@ public class CPMSTaskOutput {
     public String getOutput() {
         return output;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("CPMSTaskOutput (");
+        if (getTs() != null)
+            sb.append(String.format(",TS:%s", getTs()));
+        if (getTask() != null)
+            sb.append(String.format(",T:%s", getTask()));
+        return sb.toString();
+    }
 }

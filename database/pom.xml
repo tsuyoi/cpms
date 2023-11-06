@@ -10,18 +10,113 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>database</artifactId>
+    <version>0.1-SNAPSHOT</version>
+    <packaging>bundle</packaging>
+
     <name>Database Libraries</name>
-    <packaging>jar</packaging>
+    <description>Database functions for CPMS</description>
 
     <properties>
-
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>io.cresco.cpms</groupId>
             <artifactId>models</artifactId>
-            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>io.cresco.cpms</groupId>
+            <artifactId>common-cresco</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.2.224</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.4.2.jre11</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.24.3</version>
+        </dependency>
+        <!-- For App Only -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-configuration2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.sourceforge.argparse4j</groupId>
+            <artifactId>argparse4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-beanutils</groupId>
+            <artifactId>commons-beanutils</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jboss.logging</groupId>
+                    <artifactId>jboss-logging</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.hibernate.common</groupId>
+                    <artifactId>hibernate-commons-annotations</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Cresco -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.cmpn</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.annotation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.component.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.metatype.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.cm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.cresco</groupId>
+            <artifactId>library</artifactId>
         </dependency>
     </dependencies>
 
@@ -30,11 +125,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven.compiler.version}</version>
-                <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -45,6 +135,46 @@
                     <useFile>false</useFile>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
+                        <Bundle-Name>cpms.database</Bundle-Name>
+                        <Bundle-Description>CPMS Database Libraries</Bundle-Description>
+                        <Bundle-Vendor>Cresco.io</Bundle-Vendor>
+                        <Bundle-Version>${project.version}-${maven.build.timestamp}</Bundle-Version>
+                        <Import-Package>*;resolution:=optional</Import-Package>
+                        <Export-Package>io.cresco.cpms.*;</Export-Package>
+                        <Embed-Dependency>!org.osgi.*;!osgi.cmpn.*;!library;*</Embed-Dependency>
+                        <Provide-Capability>osgi.service;objectClass=task.TaskService</Provide-Capability>
+                        <Bundle-RequiredExecutionEnvironment>JavaSE-11</Bundle-RequiredExecutionEnvironment>
+                    </instructions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>io.cresco.cpms.database.App</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <artifactId>cpms-storage</artifactId>
+                            <Implementation-Version>${project.version}.${maven.build.timestamp}</Implementation-Version>
+                        </manifestEntries>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <finalName>${project.artifactId}-${project.version}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+            </plugin>
         </plugins>
+        <finalName>${project.artifactId}-${project.version}</finalName>
     </build>
 </project>

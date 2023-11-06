@@ -2,9 +2,9 @@ package io.cresco.cpms.database.models;
 
 import com.google.gson.Gson;
 
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.MappedSuperclass;
+import jakarta.persistence.Column;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 
 @SuppressWarnings("unused")
 @MappedSuperclass

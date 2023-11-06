@@ -8,11 +8,10 @@ import io.cresco.cpms.database.utilities.SessionFactoryManager;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
+import org.hibernate.query.criteria.HibernateCriteriaBuilder;
+import org.hibernate.query.criteria.JpaCriteriaQuery;
+import org.hibernate.query.criteria.JpaRoot;
 import org.hibernate.resource.transaction.spi.TransactionStatus;
-
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
 
 @SuppressWarnings("unused")
 public class RunnerService {
@@ -37,7 +36,7 @@ public class RunnerService {
         try {
             session.getTransaction().begin();
             object = new Runner(region, agent, plugin, identifier);
-            session.save( object );
+            session.persist( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
@@ -60,9 +59,9 @@ public class RunnerService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<Runner> q = b.createQuery(Runner.class);
-            Root<Runner> r = q.from(Runner.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<Runner> q = b.createQuery(Runner.class);
+            JpaRoot<Runner> r = q.from(Runner.class);
             q.select(r).where(b.equal(r.get("id"), id));
             Query<Runner> query = session.createQuery(q);
             Runner object = query.uniqueResult();
@@ -88,9 +87,9 @@ public class RunnerService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            CriteriaQuery<Runner> q = b.createQuery(Runner.class);
-            Root<Runner> r = q.from(Runner.class);
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            JpaCriteriaQuery<Runner> q = b.createQuery(Runner.class);
+            JpaRoot<Runner> r = q.from(Runner.class);
             q.select(r).where(
                     b.and(
                             b.equal(r.get("region"), region),
@@ -123,7 +122,7 @@ public class RunnerService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            session.update( object );
+            session.merge( object );
             session.getTransaction().commit();
             return object;
         } catch (RuntimeException e) {
@@ -149,8 +148,8 @@ public class RunnerService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -174,8 +173,8 @@ public class RunnerService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.delete( object );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( object );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {
@@ -199,8 +198,8 @@ public class RunnerService {
             throw new CPMSDatabaseException("Failed to create database session");
         try {
             session.getTransaction().begin();
-            CriteriaBuilder b = session.getCriteriaBuilder();
-            session.save( new RunnerLog(runner, state, message) );
+            HibernateCriteriaBuilder b = session.getCriteriaBuilder();
+            session.remove( new RunnerLog(runner, state, message) );
             session.getTransaction().commit();
             return true;
         } catch (RuntimeException e) {

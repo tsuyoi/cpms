@@ -18,6 +18,9 @@
     <logger name="io.cresco.cpms.storage.encapsulation.ManifestVerifier" level="error" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
+    <logger name="org.hibername" level="error" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
     <logger name="gov.loc.repository" level="error" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
@@ -29,7 +32,7 @@
         <appender-ref ref="MSGONLY" />
     </logger>
 
-    <root level="trace">
+    <root level="error">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>

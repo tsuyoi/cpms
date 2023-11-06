@@ -1,31 +1,13 @@
 package io.cresco.cpms.logging;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-@Entity
-@Table( name = "log_message")
 public class CPMSLogMessage {
-    @Id
     private String id;
-    @Column( name = "ts" )
     private Long ts;
-    @Column( name = "pipeline_id" )
     private String pipelineID;
-    @Column( name = "job_id" )
     private String jobID;
-    @Column( name = "task_id" )
     private String taskID;
-    @Column( name = "run_id" )
     private String runID;
-    @Column( name = "type" )
     private String type;
-    @Column( name = "message" )
     private String message;
 
     public CPMSLogMessage() {
@@ -73,5 +55,25 @@ public class CPMSLogMessage {
 
     public String getMessage() {
         return message;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("CPMSLogMessage (");
+        if (getId() != null)
+            sb.append(String.format("ID:%s", getId()));
+        if (getTs() != null)
+            sb.append(String.format(",TS:%s", getTs()));
+        if (getPipelineID() != null)
+            sb.append(String.format(",P:%s", getPipelineID()));
+        if (getJobID() != null)
+            sb.append(String.format(",J:%s", getJobID()));
+        if (getTaskID() != null)
+            sb.append(String.format(",T:%s", getTaskID()));
+        if (getRunID() != null)
+            sb.append(String.format(",R:%s) - ", getRunID()));
+        if (getMessage() != null)
+            sb.append(getMessage());
+        return sb.toString();
     }
 }
