@@ -20,7 +20,6 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.ion.NullValueException;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -129,7 +128,7 @@ public class App {
         StorageEngine storageEngine;
         try {
             storageEngine = new StorageEngine(logger);
-        } catch (NullValueException | IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             logger.error("Error building storage engine : {}", e.getMessage());
             return;
         }

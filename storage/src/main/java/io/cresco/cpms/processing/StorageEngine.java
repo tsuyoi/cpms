@@ -49,7 +49,7 @@ public class StorageEngine {
                 logger.trace("Remote Storage Provider: {}", remoteStorageParameters.storageProvider);
                 logger.trace("Remote Bucket: {}", remoteStorageParameters.bucket);
                 logger.trace("Remote Prefix: {}", remoteStorageParameters.prefix);
-                if (remoteStorageParameters.storageProvider == StorageProvider.S3) {
+                if (remoteStorageParameters.storageProvider == StorageProvider.AWS) {
                     if (remoteStorageParameters.prefix != null)
                         return listS3BucketObjectsWithPrefix(remoteStorageParameters.bucket,
                                 remoteStorageParameters.prefix);
@@ -74,7 +74,7 @@ public class StorageEngine {
                     return false;
                 }
                 StorageParameters remoteStorageParameters = new StorageParameters(storageTask.getRemotePath());
-                if (remoteStorageParameters.storageProvider == StorageProvider.S3) {
+                if (remoteStorageParameters.storageProvider == StorageProvider.AWS) {
                     return uploadToS3(storageTask.getLocalPath(), remoteStorageParameters.bucket,
                             remoteStorageParameters.prefix);
                 } else {

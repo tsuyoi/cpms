@@ -18,6 +18,7 @@ import java.util.List;
 
 import static com.amazonaws.services.s3.internal.Constants.MAXIMUM_UPLOAD_PARTS;
 
+@SuppressWarnings("unused")
 public class MD5Tools {
     private static final Logger logger = LoggerFactory.getLogger(MD5Tools.class);
     int partSize;
@@ -45,7 +46,7 @@ public class MD5Tools {
                 long remaining = inputFile.length() - bytesRead;
                 if (remaining > partSize) {
                     bs = new byte[(int)partSize];
-                    bytesRead = bytesRead + fis.read(bs, 0, (int)partSize);
+                    bytesRead = bytesRead + fis.read(bs, 0, partSize);
                 } else {
                     bs = new byte[(int)remaining];
                     bytesRead = bytesRead + fis.read(bs, 0, (int)remaining);
@@ -60,7 +61,7 @@ public class MD5Tools {
         } catch (IOException ioe) {
             // Blah
         } catch (Exception ex) {
-            System.out.println("MD5Tools : getMultiPartHash Error " + ex.toString());
+            System.out.println("MD5Tools : getMultiPartHash Error " + ex);
         } finally {
             try {
                 assert fis != null;
@@ -74,7 +75,9 @@ public class MD5Tools {
             }
         }
         return mpHash;
-    }String getMultiCheckSum(String fileName, long minimumUploadPartSize) throws IOException {
+    }
+
+    String getMultiCheckSum(String fileName, long minimumUploadPartSize) {
         logger.debug("Call to getMultiCheckSum [filename = {}]", fileName);
         String mpHash = null;
         FileInputStream fis = null;
@@ -109,7 +112,7 @@ public class MD5Tools {
         } catch (IOException ioe) {
             // Blah
         } catch (Exception ex) {
-            System.out.println("MD5Tools : getMultiPartHash Error " + ex.toString());
+            System.out.println("MD5Tools : getMultiPartHash Error " + ex);
         } finally {
             try {
                 assert fis != null;
@@ -160,7 +163,7 @@ public class MD5Tools {
         } catch (IOException ioe) {
             // Blah
         } catch (Exception ex) {
-            System.out.println("MD5Tools : getMultiPartHash Error " + ex.toString());
+            System.out.println("MD5Tools : getMultiPartHash Error " + ex);
         } finally {
             try {
                 assert fis != null;
@@ -176,6 +179,7 @@ public class MD5Tools {
         return mpHash;
     }
 
+    @SuppressWarnings({"deprecation","UnstableApiUsage"})
     private String calculateChecksumForMultipartUpload(List<String> md5s) {
         StringBuilder stringBuilder = new StringBuilder();
         for (String md5 : md5s) {
@@ -183,7 +187,7 @@ public class MD5Tools {
         }
 
         String hex = stringBuilder.toString();
-        byte raw[] = BaseEncoding.base16().decode(hex.toUpperCase());
+        byte[] raw = BaseEncoding.base16().decode(hex.toUpperCase());
         Hasher hasher = Hashing.md5().newHasher();
         hasher.putBytes(raw);
         String digest = hasher.hash().toString();
@@ -191,6 +195,7 @@ public class MD5Tools {
         return digest + "-" + md5s.size();
     }
 
+    @SuppressWarnings({"deprecation","UnstableApiUsage"})
     private String getMD52(byte[] hash) {
         Hasher hasher = Hashing.md5().newHasher();
         hasher.putBytes(hash);
@@ -214,11 +219,11 @@ public class MD5Tools {
     String getCheckSum(String path) throws IOException {
         String hash = null;
         //FileInputStream fis = null;
-        try (FileInputStream fis = new FileInputStream(new File(path))) {
+        try (FileInputStream fis = new FileInputStream(path)) {
             //fis = new FileInputStream(new File(path));
             hash = org.apache.commons.codec.digest.DigestUtils.md5Hex(fis);
         } catch (Exception ex) {
-            System.out.println("MD5Tools : getCheckSum Error : " + ex.toString());
+            System.out.println("MD5Tools : getCheckSum Error : " + ex);
         }/* finally {
             fis.close();
 		}*/
