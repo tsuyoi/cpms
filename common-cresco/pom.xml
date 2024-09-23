@@ -50,10 +50,10 @@
             <artifactId>org.osgi.service.cm</artifactId>
         </dependency>
         <!-- CVE-2021-31684 Vulnerability -->
-        <dependency>
+        <!--<dependency>
             <groupId>net.minidev</groupId>
             <artifactId>json-smart</artifactId>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>io.cresco</groupId>
             <artifactId>library</artifactId>
