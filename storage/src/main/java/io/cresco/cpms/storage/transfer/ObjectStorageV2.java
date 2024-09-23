@@ -1,6 +1,5 @@
 package io.cresco.cpms.storage.transfer;
 
-import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.statics.CPMSStatics;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -30,7 +29,7 @@ import java.util.stream.Collectors;
 public class ObjectStorageV2 {
     private final String accessKey;
     private final String secretKey;
-    private Region region;
+    private final Region region;
 
     private final int partSize;
     private final long minimumUploadPartSize;
@@ -397,6 +396,7 @@ public class ObjectStorageV2 {
             }
         }
 
+        @SuppressWarnings("SameParameterValue")
         private static String humanReadableByteCount(long bytes, boolean si) {
             int unit = si ? 1000 : 1024;
             if (bytes < unit) return bytes + " B";

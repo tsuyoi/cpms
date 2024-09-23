@@ -1,6 +1,5 @@
 package io.cresco.cpms.storage.transfer;
 
-import io.cresco.cpms.logging.BasicCPMSLogger;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.statics.CPMSStatics;
@@ -20,7 +19,7 @@ public class ObjectStorageBuilder {
     private CPMSLogger logger;
 
     public ObjectStorageBuilder() {
-        this.logger = new BasicCPMSLoggerBuilder().withClass(ObjectStorageV2.class).build();
+        this.logger = new BasicCPMSLoggerBuilder().withClass(ObjectStorageBuilder.class).build();
         this.partSize = CPMSStatics.DEFAULT_PART_SIZE;
         this.minimumUploadPartSize = partSize * BYTES_ORDER_OF_MAGNITUDE * BYTES_ORDER_OF_MAGNITUDE;
         this.multipartUploadThreshold = minimumUploadPartSize;
