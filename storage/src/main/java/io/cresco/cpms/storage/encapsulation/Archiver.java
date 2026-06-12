@@ -6,22 +6,20 @@ import gov.loc.repository.bagit.exceptions.*;
 import gov.loc.repository.bagit.hash.StandardSupportedAlgorithms;
 import gov.loc.repository.bagit.hash.SupportedAlgorithm;
 import gov.loc.repository.bagit.reader.BagReader;
-import io.cresco.cpms.logging.BasicCPMSLogger;
-import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.statics.ArchiveCompression;
 import io.cresco.cpms.statics.BagItHashingAlgorithm;
 import io.cresco.cpms.statics.BagItType;
-import io.cresco.cpms.statics.CPMSStatics;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
-import org.apache.commons.compress.utils.IOUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.tika.Tika;
+import org.jspecify.annotations.NonNull;
 
 import java.io.*;
 import java.nio.file.*;
@@ -33,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
@@ -53,42 +52,14 @@ public class Archiver {
     }
 
     private String getCompressionFileExtension(ArchiveCompression compressionType) {
-        switch (compressionType) {
-            case TAR:
-                return ".tar";
-            case GZIP:
-                return ".tar.gz";
-            default:
-                return null;
-        }
+        return switch (compressionType) {
+            case TAR -> ".tar";
+            case GZIP -> ".tar.gz";
+        };
     }
 
     public String getCompressionFileExtension() {
         return getCompressionFileExtension(archiveCompression);
-    }
-
-    public String getFlowCellObjectName(String flowCellID) {
-        return String.format("%s%s", flowCellID, getCompressionFileExtension(archiveCompression));
-    }
-
-    public String getFlowCellObjectName(String flowCellID, String suffix) {
-        return String.format("%s-%s%s", flowCellID, suffix, getCompressionFileExtension(archiveCompression));
-    }
-
-    public String getTypedSampleObjectName(String flowCellID, String type, String sampleID) {
-        return String.format("%s/%s/%s%s", flowCellID, type, sampleID, getCompressionFileExtension(archiveCompression));
-    }
-
-    public String getTypedSampleObjectName(String flowCellID, String type, String sampleID, String suffix) {
-        return String.format("%s-%s/%s/%s%s", flowCellID, suffix, type, sampleID, getCompressionFileExtension(archiveCompression));
-    }
-
-    public String getSampleObjectName(String flowCellID, String sampleID) {
-        return String.format("%s/%s%s", flowCellID, sampleID, getCompressionFileExtension(archiveCompression));
-    }
-
-    public String getSampleObjectName(String flowCellID, String sampleID, String suffix) {
-        return String.format("%s-%s/%s%s", flowCellID, suffix, sampleID, getCompressionFileExtension(archiveCompression));
     }
 
     public boolean isArchive(String archive) {
@@ -101,7 +72,8 @@ public class Archiver {
 
     public boolean isArchive(Path archive) {
         logger.trace("isArchive('{}')", archive);
-        return (archive.getFileName().toString().endsWith(".tar") || archive.getFileName().toString().endsWith(".tar.gz"));
+        return (archive.getFileName().toString().endsWith(".tar") ||
+                archive.getFileName().toString().endsWith(".tar.gz"));
     }
 
     public boolean isBag(String bag) {
@@ -147,8 +119,8 @@ public class Archiver {
         Path data = bag.resolve("data");
         if (!Files.exists(data) || !Files.isDirectory(data))
             return false;
-        try {
-            Set<Path> dirs = Files.list(bag).filter(Files::isDirectory).collect(Collectors.toSet());
+        try (Stream<Path> bagFiles = Files.list(bag)) {
+            Set<Path> dirs = bagFiles.filter(Files::isDirectory).collect(Collectors.toSet());
             if (dirs.size() > 1 || !dirs.contains(data))
                 return false;
         } catch (IOException e) {
@@ -533,16 +505,14 @@ public class Archiver {
             Tika tika = new Tika();
             String inType = tika.detect(in);
             logger.trace("Detected type (in): {}", inType);
-            switch (inType) {
-                case "application/x-tar":
-                case "application/x-gtar":
-                    return unpack(in, out);
-                case "application/gzip":
-                    return decompress(in, out);
-                default:
+            return switch (inType) {
+                case "application/x-tar", "application/x-gtar" -> unpack(in, out);
+                case "application/gzip" -> decompress(in, out);
+                default -> {
                     logger.error("[{}] has archive type [{}] which is unsupported currently", in.getAbsolutePath(), inType);
-                    return false;
-            }
+                    yield false;
+                }
+            };
         } catch (IOException ioe) {
             logger.error("Failed to detect type [{}] - [{}:{}]\n{}",
                     in, ioe.getClass().getCanonicalName(), ioe.getMessage(), ExceptionUtils.getStackTrace(ioe));
@@ -630,7 +600,7 @@ public class Archiver {
 
     private void extractStream(TarArchiveInputStream fin, File out) throws IOException {
         TarArchiveEntry entry;
-        while ((entry = fin.getNextTarEntry()) != null) {
+        while ((entry = fin.getNextEntry()) != null) {
             if (entry.isDirectory()) {
                 continue;
             }
@@ -708,15 +678,15 @@ public class Archiver {
      */
     private void deleteFolder(Path folder) throws IOException {
         logger.trace("deleteFolder({})", folder.toAbsolutePath());
-        Files.walkFileTree(folder, new SimpleFileVisitor<Path>() {
+        Files.walkFileTree(folder, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public @NonNull FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 Files.delete(file);
                 return FileVisitResult.CONTINUE;
             }
 
             @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            public @NonNull FileVisitResult postVisitDirectory(@NonNull Path dir, IOException exc) throws IOException {
                 Files.delete(dir);
                 return FileVisitResult.CONTINUE;
             }

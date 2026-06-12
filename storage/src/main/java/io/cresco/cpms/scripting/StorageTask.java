@@ -1,10 +1,7 @@
 package io.cresco.cpms.scripting;
 
-import com.google.gson.Gson;
 import org.apache.commons.lang3.StringUtils;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 
 public class StorageTask implements ScriptedTask {
@@ -12,8 +9,8 @@ public class StorageTask implements ScriptedTask {
     private final String name;
     private final String type;
     private final String action;
-    private final Path localPath;
-    private final String remotePath;
+    private final String sourcePath;
+    private final String destinationPath;
     private final String storageTaskJSON;
 
     public StorageTask(Map<String, String> storageTaskMap) throws ScriptException {
@@ -46,16 +43,16 @@ public class StorageTask implements ScriptedTask {
                     String.format("Storage task [%s] is missing required parameter [action]", getName())
             );
         this.action = storageTaskScript.action;
-        if ((getAction().equals("upload") || getAction().equals("download")) && StringUtils.isBlank(storageTaskScript.localPath))
+        if ((getAction().equals("upload") || getAction().equals("download")) && StringUtils.isBlank(storageTaskScript.sourcePath))
             throw new ScriptException(
-                    String.format("Storage task [%s] is missing required parameter [localPath]", getName())
+                    String.format("Storage task [%s] is missing required parameter [sourcePath]", getName())
             );
-        this.localPath = (storageTaskScript.localPath != null) ? Paths.get(storageTaskScript.localPath) : null;
-        if ((getAction().equals("upload") || getAction().equals("download")) && StringUtils.isBlank(storageTaskScript.remotePath))
+        this.sourcePath = storageTaskScript.sourcePath;
+        if ((getAction().equals("upload") || getAction().equals("download")) && StringUtils.isBlank(storageTaskScript.destinationPath))
             throw new ScriptException(
-                    String.format("Storage task [%s] is missing required parameter [remotePath]", getName())
+                    String.format("Storage task [%s] is missing required parameter [destinationPath]", getName())
             );
-        this.remotePath = storageTaskScript.remotePath;
+        this.destinationPath = storageTaskScript.destinationPath;
     }
 
     public String getId() { return id; }
@@ -72,12 +69,12 @@ public class StorageTask implements ScriptedTask {
         return action;
     }
 
-    public Path getLocalPath() {
-        return localPath;
+    public String getSourcePath() {
+        return sourcePath;
     }
 
-    public String getRemotePath() {
-        return remotePath;
+    public String getDestinationPath() {
+        return destinationPath;
     }
 
     public String getStorageTaskJSON() {
@@ -90,14 +87,15 @@ public class StorageTask implements ScriptedTask {
 
     @Override
     public String toString() {
-        return String.format("- Storage Task (ID: %s, Name: %s)\n" +
-                        "\tAction: %s\n" +
-                        "\tLocal Path: %s\n" +
-                        "\tRemote Path: %s",
+        return String.format("""
+                        - Storage Task (ID: %s, Name: %s)
+                        \tAction: %s
+                        \tSource Path: %s
+                        \tDestination Path: %s""",
                 getId(), getName(),
                 getAction(),
-                getLocalPath(),
-                getRemotePath()
+                getSourcePath(),
+                getDestinationPath()
         );
     }
 }

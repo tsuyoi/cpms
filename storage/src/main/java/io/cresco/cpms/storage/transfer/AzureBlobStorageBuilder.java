@@ -2,6 +2,7 @@ package io.cresco.cpms.storage.transfer;
 
 import com.azure.core.credential.BasicAuthenticationCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.identity.UsernamePasswordCredentialBuilder;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
@@ -10,14 +11,14 @@ public class AzureBlobStorageBuilder {
     private String endpoint;
     private TokenCredential tokenCredential;
 
-    private final CPMSLogger logger;
+    private CPMSLogger logger;
 
     public AzureBlobStorageBuilder() {
         this.logger = new BasicCPMSLoggerBuilder().withClass(AzureBlobStorageBuilder.class).build();
-    }
-
-    public AzureBlobStorageBuilder(CPMSLogger existingLogger) {
-        this.logger = existingLogger.cloneLogger(AzureBlobStorageBuilder.class);
+        if (System.getenv("AZURE_STORAGE_ACCOUNT_NAME") != null)
+            this.endpoint = String.format("https://%s.blob.core.windows.net",
+                    System.getenv("AZURE_STORAGE_ACCOUNT_NAME"));
+        this.tokenCredential = new DefaultAzureCredentialBuilder().build();
     }
 
     public AzureBlobStorageBuilder withEndpoint(String endpoint) {
@@ -25,17 +26,13 @@ public class AzureBlobStorageBuilder {
         return this;
     }
 
-    public AzureBlobStorageBuilder withStaticCredentials(String username, String password) {
-        this.tokenCredential = new BasicAuthenticationCredential(username, password);
+    public AzureBlobStorageBuilder withLogger(CPMSLogger logger) {
+        setLogger(logger);
         return this;
     }
 
-    public AzureBlobStorageBuilder withStaticCredentials(String clientId, String username, String password) {
-        this.tokenCredential = new UsernamePasswordCredentialBuilder()
-                .clientId(clientId)
-                .username(username)
-                .password(password)
-                .build();
+    public AzureBlobStorageBuilder withStaticCredentials(String username, String password) {
+        this.tokenCredential = new BasicAuthenticationCredential(username, password);
         return this;
     }
 
@@ -53,11 +50,15 @@ public class AzureBlobStorageBuilder {
         return endpoint;
     }
 
-    public TokenCredential getTokenCredential() {
-        return tokenCredential;
-    }
-
     public CPMSLogger getLogger() {
         return logger;
+    }
+
+    public void setLogger(CPMSLogger logger) {
+        this.logger = logger.cloneLogger(AzureBlobStorageBuilder.class);
+    }
+
+    public TokenCredential getTokenCredential() {
+        return tokenCredential;
     }
 }

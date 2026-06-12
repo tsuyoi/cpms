@@ -25,8 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@SuppressWarnings({"unused", "WeakerAccess", "UnusedReturnValue", "BooleanMethodIsAlwaysInverted"})
-public class ObjectStorageV2 {
+public class S3ObjectStorage implements TransferAdapter {
     private final String accessKey;
     private final String secretKey;
     private final Region region;
@@ -41,7 +40,7 @@ public class ObjectStorageV2 {
      * Object Storage Constructer utilizing the Builder paradigm
      * @param builder - Builder object
      */
-    public ObjectStorageV2(ObjectStorageBuilder builder) {
+    public S3ObjectStorage(S3ObjectStorageBuilder builder) {
         this.accessKey = builder.getAccessKey();
         this.secretKey = builder.getSecretKey();
         this.region = builder.getRegion();
@@ -95,8 +94,8 @@ public class ObjectStorageV2 {
                 .build();
     }
 
-    public List<Bucket> listBuckets() {
-        logger.debug("listBuckets()");
+    private List<Bucket> listBuckets() {
+        logger.trace("listBuckets()");
         try (S3Client s3Client = getClient()) {
             ListBucketsRequest listBucketsRequest = ListBucketsRequest.builder()
                     .build();
@@ -108,7 +107,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public boolean doesBucketExist(String bucket) {
+    private boolean doesBucketExist(String bucket) {
         logger.debug("doesBucketExist({})", bucket);
         try (S3Client s3Client = getClient()) {
             HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
@@ -124,7 +123,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public void createBucket(String bucket) {
+    private void createBucket(String bucket) {
         logger.debug("createBucket({})", bucket);
         try (S3Client s3Client = getClient()) {
             S3Waiter s3Waiter = s3Client.waiter();
@@ -143,7 +142,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public HeadObjectResponse headObject(String bucket, String key) {
+    private HeadObjectResponse headObject(String bucket, String key) {
         logger.debug("headObject({}, {})", bucket, key);
         try (S3Client s3Client = getClient()) {
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
@@ -159,7 +158,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public List<S3Object> listBucketObjects(String bucket) {
+    private List<S3Object> listBucketObjects(String bucket) {
         logger.debug("listBucketObjects({})", bucket);
         try (S3Client s3Client = getClient()) {
             ListObjectsRequest listObjectsRequest = ListObjectsRequest.builder()
@@ -170,7 +169,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public List<S3Object> listBucketObjects(String bucket, String prefix) {
+    private List<S3Object> listBucketObjects(String bucket, String prefix) {
         logger.debug("listBucketObjects({})", bucket);
         try (S3Client s3Client = getClient()) {
             ListObjectsRequest listObjectsRequest = ListObjectsRequest.builder()
@@ -182,7 +181,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public boolean deleteBucketObject(String bucket, String key) {
+    private boolean deleteBucketObject(String bucket, String key) {
         logger.debug("deleteBucketObject({}, {})", bucket, key);
         try (S3Client s3Client = getClient()) {
             DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
@@ -197,7 +196,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public boolean deleteBucketContents(String bucket, String prefix) {
+    private boolean deleteBucketContents(String bucket, String prefix) {
         logger.debug("deleteBucketContents({}, {})", bucket, prefix);
         try (S3Client s3Client = getClient()) {
             List<ObjectIdentifier> toDelete = listBucketObjects(bucket, prefix).stream()
@@ -218,11 +217,11 @@ public class ObjectStorageV2 {
         }
     }
 
-    public List<String> listBucketDirectoriesAsString(String bucket) {
+    private List<String> listBucketDirectoriesAsString(String bucket) {
         return listBucketDirectories(bucket).stream().map(CommonPrefix::prefix).collect(Collectors.toList());
     }
 
-    public List<CommonPrefix> listBucketDirectories(String bucket) {
+    private List<CommonPrefix> listBucketDirectories(String bucket) {
         logger.debug("listBucketDirectories({})", bucket);
         try (S3Client s3Client = getClient()) {
             ListObjectsV2Request listObjectsRequest = ListObjectsV2Request.builder()
@@ -237,7 +236,7 @@ public class ObjectStorageV2 {
         }
     }
 
-    public boolean uploadFile(Path uploadPath, String bucket, String key) throws IOException {
+    private boolean uploadFileToBucket(Path uploadPath, String bucket, String key) throws IOException {
         logger.debug("uploadFile({}, {}, {})", uploadPath, bucket, key);
         if (!Files.exists(uploadPath))
             throw new IOException("file to upload does not exist");
@@ -256,7 +255,7 @@ public class ObjectStorageV2 {
             UploadFileRequest uploadFileRequest = UploadFileRequest.builder()
                     .putObjectRequest(putObjectRequest)
                     .source(uploadPath)
-                    .addTransferListener(new CrescoLoggingTransferListener(logger))
+                    .addTransferListener(new CrescoS3LoggingTransferListener(logger))
                     .build();
             FileUpload fileUpload = s3TransferManager.uploadFile(uploadFileRequest);
             CompletedFileUpload uploadResult = fileUpload.completionFuture().join();
@@ -292,7 +291,6 @@ public class ObjectStorageV2 {
         }
         try (S3AsyncClient s3Client = getAsyncClient();
              S3TransferManager s3TransferManager = S3TransferManager.builder().s3Client(s3Client).build()) {
-            long s3ObjectSize = s3Object.contentLength();
             String s3Checksum = s3Object.eTag().replace("\"", "");
             int s3PartSize = partSize;
             try {
@@ -304,13 +302,9 @@ public class ObjectStorageV2 {
             logger.trace("downloadDir.getAbsolutePath(): {}", destinationDirectory.toAbsolutePath());
             if (!Files.exists(destinationDirectory)) {
                 try {
-                    if (Files.createDirectories(destinationDirectory) == null) {
-                        logger.cpmsError("Output directory [{}] does not exist and could not be created",
-                                destinationDirectory.toAbsolutePath());
-                        return false;
-                    }
+                    Files.createDirectories(destinationDirectory);
                 } catch (IOException e) {
-                    logger.cpmsError("Failed to create output directory [{}]",
+                    logger.cpmsError("Output directory [{}] does not exist and could not be created",
                             destinationDirectory.toAbsolutePath());
                     return false;
                 }
@@ -324,7 +318,7 @@ public class ObjectStorageV2 {
             DownloadFileRequest downloadFileRequest = DownloadFileRequest.builder()
                     .getObjectRequest(getObjectRequest)
                     .destination(destinationDirectory.resolve(outFile))
-                    .addTransferListener(new CrescoLoggingTransferListener(logger))
+                    .addTransferListener(new CrescoS3LoggingTransferListener(logger))
                     .build();
             FileDownload fileDownload = s3TransferManager.downloadFile(downloadFileRequest);
             CompletedFileDownload downloadResult = fileDownload.completionFuture().join();
@@ -354,14 +348,71 @@ public class ObjectStorageV2 {
     }
 
     public void setLogger(CPMSLogger logger) {
-        this.logger = logger.cloneLogger(ObjectStorageV2.class);
+        this.logger = logger.cloneLogger(S3ObjectStorage.class);
     }
 
     public void updateLogger(CPMSLogger logger) {
-        this.logger = logger.cloneLogger(ObjectStorageV2.class);
+        this.logger = logger.cloneLogger(S3ObjectStorage.class);
     }
 
-    private static class CrescoLoggingTransferListener implements TransferListener {
+    /**
+     * Lists the top level container objects associated with the provided cloud provider credentials
+     *
+     * @return A String list of the top level container objects
+     */
+    @Override
+    public List<String> listTopLevelContainers() {
+        return listBuckets().stream().map(Bucket::name).collect(Collectors.toList());
+    }
+
+    /**
+     *
+     * @param containerName The name of the top level container object
+     * @return A boolean indicating the existence of a container with a matching name
+     */
+    @Override
+    public boolean doesContainerExist(String containerName) {
+        return doesBucketExist(containerName);
+    }
+
+    /**
+     * List the storage objects associated with a top level container name
+     *
+     * @param containerName The name of the top level container object
+     * @return A String list of the objects
+     */
+    @Override
+    public List<String> listObjectsInContainer(String containerName) {
+        return listBucketObjects(containerName).stream().map(S3Object::key).collect(Collectors.toList());
+    }
+
+    /**
+     * List the storage objects associated with a top level container name with a matching name prefix
+     *
+     * @param containerName The name of the top level container object
+     * @param prefix        A String prefix used to match container objects
+     * @return A String list of matching objects
+     */
+    @Override
+    public List<String> listObjectsInContainer(String containerName, String prefix) {
+        return listBucketObjects(containerName, prefix).stream().map(S3Object::key).collect(Collectors.toList());
+    }
+
+    /**
+     * Uploads a local file to the indicated container
+     *
+     * @param uploadPath Path of local file to upload
+     * @param container  Name of container in which to upload file
+     * @param key        Key to use inside container
+     * @return Whether the file was successfully uploaded
+     * @throws IOException if uploadPath doesn't exist locally or container doesn't exist remotely
+     */
+    @Override
+    public boolean uploadFile(Path uploadPath, String container, String key) throws IOException {
+        return uploadFileToBucket(uploadPath, container, key);
+    }
+
+    private static class CrescoS3LoggingTransferListener implements TransferListener {
         private final CPMSLogger logger;
         private final int updatePercentStep = 5;
         private Long totalBytes;
@@ -369,9 +420,9 @@ public class ObjectStorageV2 {
         private long lastTransferred = 0L;
         private int nextUpdate = updatePercentStep;
 
-        public CrescoLoggingTransferListener(CPMSLogger logger) {
+        public CrescoS3LoggingTransferListener(CPMSLogger logger) {
             this.lastTimestamp = System.currentTimeMillis();
-            this.logger = logger.cloneLogger(CrescoLoggingTransferListener.class);
+            this.logger = logger.cloneLogger(CrescoS3LoggingTransferListener.class);
         }
 
         @Override
@@ -412,17 +463,6 @@ public class ObjectStorageV2 {
             int exp = (int) (Math.log(rate) / Math.log(unit));
             String pre = (exp >= 0 && exp < 7) ? "kMGTPE".charAt(exp - 1) + "" : "";
             return String.format("%.1f %sb/s", rate / Math.pow(unit, exp), pre);
-        }
-
-        private static String formatDuration(Duration duration) {
-            long seconds = duration.getSeconds();
-            long absSeconds = Math.abs(seconds);
-            String positive = String.format(
-                    "%d:%02d:%02d",
-                    absSeconds / 3600,
-                    (absSeconds % 3600) / 60,
-                    absSeconds % 60);
-            return seconds < 0 ? "-" + positive : positive;
         }
     }
 }

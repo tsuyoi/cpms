@@ -35,11 +35,11 @@ public class StorageTaskScript extends ScriptedTaskScript {
     @SerializedName("action")
     public String action;
 
-    @SerializedName("remote_path")
-    public String remotePath;
+    @SerializedName("source_path")
+    public String sourcePath;
 
-    @SerializedName("local_path")
-    public String localPath;
+    @SerializedName("destination_path")
+    public String destinationPath;
 
     @Override
     public String toString() {
@@ -48,8 +48,8 @@ public class StorageTaskScript extends ScriptedTaskScript {
         toPrint.put("name", this.name);
         toPrint.put("type", this.type);
         toPrint.put("action", this.action);
-        toPrint.put("remote_path", this.remotePath);
-        toPrint.put("local_path", this.localPath);
+        toPrint.put("source_path", this.sourcePath);
+        toPrint.put("destination_path", this.destinationPath);
         return toPrint.toString();
     }
 }
