@@ -97,7 +97,7 @@ public class App {
                 }
                 break;
             case "download":
-                if (parameters.size() != 3) {
+                if (parameters.size() < 2 || parameters.size() > 3) {
                     simpleLogger.info("download usage: <remote_path_or_object> <local_path>");
                     return;
                 }

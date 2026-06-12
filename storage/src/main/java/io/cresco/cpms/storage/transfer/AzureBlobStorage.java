@@ -132,6 +132,7 @@ public class AzureBlobStorage implements TransferAdapter {
                     .getBlobClient(key);
             BlobProperties blobProperties = blobClient.getProperties();
             String azureChecksum = HexFormat.of().formatHex(blobProperties.getContentMd5());
+            logger.trace("Remote getContentMd5: {}", azureChecksum);
             if (!Files.exists(destinationDirectory)) {
                 try {
                     Files.createDirectories(destinationDirectory);
@@ -157,6 +158,7 @@ public class AzureBlobStorage implements TransferAdapter {
                 logger.error("Failed to compute the local MD5 checksum of downloaded file: {}", e);
                 return false;
             }
+            logger.trace("Local MD5 checksum: {}", localChecksum);
             return localChecksum.equals(azureChecksum);
         } catch (Exception e) {
             logger.cpmsError("Failed to download file: {}", e.getMessage());

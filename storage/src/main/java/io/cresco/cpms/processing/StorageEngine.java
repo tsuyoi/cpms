@@ -139,8 +139,8 @@ public class StorageEngine {
             }
             case "download": {
                 logger.info("Download task");
-                if (storageTask.getSourcePath() == null || !Files.exists(Paths.get(storageTask.getSourcePath()))) {
-                    logger.cpmsError("Source path to upload [{}] does not exist", storageTask.getSourcePath());
+                if (storageTask.getSourcePath() == null || storageTask.getSourcePath().isEmpty()) {
+                    logger.cpmsError("Source path to download [{}] cannot be empty", storageTask.getSourcePath());
                     return new StorageTaskResultBuilder().withSuccess(false).build();
                 }
                 if (storageTask.getDestinationPath() == null || storageTask.getDestinationPath().isEmpty()) {
