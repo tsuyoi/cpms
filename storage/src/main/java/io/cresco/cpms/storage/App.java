@@ -53,22 +53,31 @@ public class App {
         String command = ns.getString("command");
         List<String> parameters = ns.getList("parameters");
 
+        final ch.qos.logback.classic.Logger meLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("MSGEVENT");
+        meLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger appLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(App.class);
+        appLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger seLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StorageEngine.class);
+        seLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger arcLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Archiver.class);
+        arcLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger azbbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorageBuilder.class);
+        azbbLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger azbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorage.class);
+        azbLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger osLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorageBuilder.class);
+        osLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger osbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorage.class);
+        osbLogger.setLevel(Level.toLevel("INFO"));
+
         if (verbose) {
-            final ch.qos.logback.classic.Logger meLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("MSGEVENT");
             meLogger.setLevel(Level.toLevel("TRACE"));
-            final ch.qos.logback.classic.Logger appLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(App.class);
             appLogger.setLevel(Level.toLevel("TRACE"));
-            final ch.qos.logback.classic.Logger seLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StorageEngine.class);
             seLogger.setLevel(Level.toLevel("TRACE"));
-            final ch.qos.logback.classic.Logger arcLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Archiver.class);
             arcLogger.setLevel(Level.toLevel("TRACE"));
-            final ch.qos.logback.classic.Logger azbbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorageBuilder.class);
             azbbLogger.setLevel(Level.toLevel("TRACE"));
-            final ch.qos.logback.classic.Logger azbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorage.class);
             azbLogger.setLevel(Level.toLevel("TRACE"));
-            final ch.qos.logback.classic.Logger osLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorageBuilder.class);
             osLogger.setLevel(Level.toLevel("TRACE"));
-            final ch.qos.logback.classic.Logger osbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorage.class);
             osbLogger.setLevel(Level.toLevel("TRACE"));
         }
 

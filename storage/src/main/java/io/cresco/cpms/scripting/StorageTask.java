@@ -10,6 +10,8 @@ public class StorageTask implements ScriptedTask {
     private final String type;
     private final String action;
     private final String sourcePath;
+    private final String sourceCompression;
+    private final String sourceArchiving;
     private final String destinationPath;
     private final String storageTaskJSON;
 
@@ -48,6 +50,16 @@ public class StorageTask implements ScriptedTask {
                     String.format("Storage task [%s] is missing required parameter [sourcePath]", getName())
             );
         this.sourcePath = storageTaskScript.sourcePath;
+        if (getAction().equals("upload") && StringUtils.isBlank(storageTaskScript.sourceCompression))
+            throw new ScriptException(
+                    String.format("Storage upload task [%s] is missing required parameter [sourceCompression]", getName())
+            );
+        this.sourceCompression = storageTaskScript.sourceCompression;
+        if (getAction().equals("upload") && StringUtils.isBlank(storageTaskScript.sourceArchiving))
+            throw new ScriptException(
+                    String.format("Storage upload task [%s] is missing required parameter [sourceArchiving]", getName())
+            );
+        this.sourceArchiving = storageTaskScript.sourceArchiving;
         if ((getAction().equals("upload") || getAction().equals("download")) && StringUtils.isBlank(storageTaskScript.destinationPath))
             throw new ScriptException(
                     String.format("Storage task [%s] is missing required parameter [destinationPath]", getName())
@@ -73,6 +85,14 @@ public class StorageTask implements ScriptedTask {
         return sourcePath;
     }
 
+    public String getSourceCompression() {
+        return sourceCompression;
+    }
+
+    public String getSourceArchiving() {
+        return sourceArchiving;
+    }
+
     public String getDestinationPath() {
         return destinationPath;
     }
@@ -91,10 +111,14 @@ public class StorageTask implements ScriptedTask {
                         - Storage Task (ID: %s, Name: %s)
                         \tAction: %s
                         \tSource Path: %s
+                        \tSource Compression: %s
+                        \tSource Archiving: %s
                         \tDestination Path: %s""",
                 getId(), getName(),
                 getAction(),
                 getSourcePath(),
+                getSourceCompression(),
+                getSourceArchiving(),
                 getDestinationPath()
         );
     }

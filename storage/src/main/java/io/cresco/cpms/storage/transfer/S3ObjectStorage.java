@@ -278,16 +278,16 @@ public class S3ObjectStorage implements TransferAdapter {
         }
     }
 
-    public boolean downloadObject(String bucket, String key, Path destinationDirectory) {
+    private Path downloadObjectToFile(String bucket, String key, Path destinationDirectory) {
         logger.debug("downloadObject({}, {}, {})", bucket, key, destinationDirectory);
         if (!doesBucketExist(bucket)) {
             logger.cpmsError("Bucket [{}] does not exist", bucket);
-            return false;
+            return null;
         }
         HeadObjectResponse s3Object = headObject(bucket, key);
         if (s3Object == null) {
             logger.cpmsError("Bucket [{}] does not contain [{}]", bucket, key);
-            return false;
+            return null;
         }
         try (S3AsyncClient s3Client = getAsyncClient();
              S3TransferManager s3TransferManager = S3TransferManager.builder().s3Client(s3Client).build()) {
@@ -306,7 +306,7 @@ public class S3ObjectStorage implements TransferAdapter {
                 } catch (IOException e) {
                     logger.cpmsError("Output directory [{}] does not exist and could not be created",
                             destinationDirectory.toAbsolutePath());
-                    return false;
+                    return null;
                 }
             }
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
@@ -333,14 +333,14 @@ public class S3ObjectStorage implements TransferAdapter {
             logger.trace("localChecksum: {}", localChecksum);
             if (!localChecksum.equals(s3Checksum))
                 logger.cpmsError("Checksums do not match [local: {}, S3: {}]", localChecksum, s3Checksum);
-            return localChecksum.equals(s3Checksum);
+            if (localChecksum.equals(s3Checksum))
+                return outFile;
         } catch (SdkException e) {
             logger.error("downloadObject SDK Error: {}", e.getMessage());
-            return false;
         } catch (IOException e) {
             logger.cpmsError("downloadObject IO Error: {}", e.getMessage());
-            return false;
         }
+        return null;
     }
 
     public CPMSLogger getLogger() {
@@ -410,6 +410,20 @@ public class S3ObjectStorage implements TransferAdapter {
     @Override
     public boolean uploadFile(Path uploadPath, String container, String key) throws IOException {
         return uploadFileToBucket(uploadPath, container, key);
+    }
+
+    /**
+     * Uploads a local file to the indicated container
+     *
+     * @param container         Name of container in which to upload file
+     * @param key               Key to use inside container
+     * @param destinationFolder The folder in which to download the remote object
+     * @return The final Path object of the downloaded file
+     * @throws IOException if the object doesn't exist remotely or local download fails
+     */
+    @Override
+    public Path downloadObject(String container, String key, Path destinationFolder) throws IOException {
+        return downloadObjectToFile(container, key, destinationFolder);
     }
 
     private static class CrescoS3LoggingTransferListener implements TransferListener {

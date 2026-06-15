@@ -33,6 +33,16 @@ public class StorageEngine {
         setLogger(logger);
     }
 
+    /*
+        Main Methods
+     */
+
+    /**
+     * Executes a supplied storage job
+     * @param storageTask The storage job script to execute
+     * @return A StorageTaskResult object with information about the success of the job execution
+     * @throws ExecutionException If there was a failure in job execution
+     */
     public StorageTaskResult runStorageJob(StorageTask storageTask) throws ExecutionException {
         logger.debug("runStorageJob({})", storageTask);
         if (storageTask == null) {
@@ -48,12 +58,9 @@ public class StorageEngine {
                 logger.trace("Source Prefix: {}", sourceStorageParameters.prefix);
                 TransferAdapter transferAdapter;
                 if (sourceStorageParameters.storageProvider == StorageProvider.AWS) {
-                    S3ObjectStorage s3ObjectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-                    transferAdapter = s3ObjectStorage;
+                    transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
                 } else if (sourceStorageParameters.storageProvider == StorageProvider.Azure) {
-                    AzureBlobStorage azureBlobStorage = new AzureBlobStorageBuilder().build();
-                    logger.trace("Azure Storage Endpoint: {}", azureBlobStorage.getEndpoint());
-                    transferAdapter = azureBlobStorage;
+                    transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             sourceStorageParameters.storageProvider.name());
@@ -96,14 +103,13 @@ public class StorageEngine {
                     destinationKey += destinationStorageParameters.prefix + "/";
                 destinationKey += sourceStorageParameters.path.getFileName();
                 logger.trace("Destination Key: {}",  destinationKey);
+                // Todo: If archiving and/or compression is needed, perform here to pass the new path to the
+                //  TransferAdapter
                 TransferAdapter transferAdapter;
                 if (destinationStorageParameters.storageProvider == StorageProvider.AWS) {
-                    S3ObjectStorage s3ObjectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-                    transferAdapter = s3ObjectStorage;
+                    transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
                 } else if (destinationStorageParameters.storageProvider == StorageProvider.Azure) {
-                    AzureBlobStorage azureBlobStorage = new AzureBlobStorageBuilder().build();
-                    logger.trace("Azure Storage Endpoint: {}", azureBlobStorage.getEndpoint());
-                    transferAdapter = azureBlobStorage;
+                    transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             destinationStorageParameters.storageProvider.name());
@@ -155,12 +161,9 @@ public class StorageEngine {
                 logger.trace("Source Prefix: {}", sourceStorageParameters.prefix);
                 TransferAdapter transferAdapter;
                 if (sourceStorageParameters.storageProvider == StorageProvider.AWS) {
-                    S3ObjectStorage s3ObjectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-                    transferAdapter = s3ObjectStorage;
+                    transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
                 } else if (sourceStorageParameters.storageProvider == StorageProvider.Azure) {
-                    AzureBlobStorage azureBlobStorage = new AzureBlobStorageBuilder().build();
-                    logger.trace("Azure Storage Endpoint: {}", azureBlobStorage.getEndpoint());
-                    transferAdapter = azureBlobStorage;
+                    transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             sourceStorageParameters.storageProvider.name());
@@ -170,24 +173,77 @@ public class StorageEngine {
                 logger.trace("Source Path: {}", storageTask.getDestinationPath());
                 logger.trace("Source Storage Provider: {}", destinationStorageParameters.storageProvider);
                 try {
-                    if (transferAdapter.downloadObject(sourceStorageParameters.container, sourceStorageParameters.prefix,
-                            destinationStorageParameters.path)) {
+                    Path finalDestinationPath = transferAdapter.downloadObject(sourceStorageParameters.container, 
+                            sourceStorageParameters.prefix, destinationStorageParameters.path);
+                    if (finalDestinationPath != null) {
+                        Archiver archiver = new ArchiverBuilder().withLogger(logger).build();
+                        if (archiver.isArchive(finalDestinationPath)) {
+                            String folder = finalDestinationPath.toString();
+                            int suffix = folder.lastIndexOf(".tar");
+                            if (suffix != -1)
+                                suffix = finalDestinationPath.toString().lastIndexOf(".tgz");
+                            if (suffix > 0)
+                                folder = finalDestinationPath.toString().substring(suffix);
+                            Path finalDestinationFolder = destinationStorageParameters.path.resolve(folder);
+                            logger.cpmsInfo("Unboxing [{}] to [{}]",  finalDestinationPath,
+                                    finalDestinationFolder);
+                            if (!archiver.unarchive(finalDestinationPath, destinationStorageParameters.path) || 
+                                    !Files.exists(finalDestinationFolder)) {
+                                logger.cpmsError("Failed to unbox [{}] to [{}]",  finalDestinationPath,
+                                        finalDestinationFolder);
+                                return new StorageTaskResultBuilder()
+                                        .withSuccess(false)
+                                        .withSourcePath(storageTask.getSourcePath())
+                                        .withDestinationPath(storageTask.getDestinationPath())
+                                        .withErrorMessage(String.format("Failed to unbox [%s] to [%s]",
+                                                finalDestinationPath, finalDestinationFolder))
+                                        .build();
+                            }
+                            try {
+                                Files.deleteIfExists(finalDestinationPath);
+                            } catch (IOException e) {
+                                logger.cpmsError("Failed to clean up downloaded object [{}]", finalDestinationPath);
+                                return new StorageTaskResultBuilder()
+                                        .withSuccess(false)
+                                        .withSourcePath(storageTask.getSourcePath())
+                                        .withDestinationPath(storageTask.getDestinationPath())
+                                        .withErrorMessage(String.format("Failed to clean up downloaded object [%s]",
+                                                finalDestinationPath))
+                                        .build();
+                            }
+                            if (archiver.isBag(finalDestinationFolder)) {
+                                logger.cpmsInfo("Verifying [{}] using BagIt data",  finalDestinationFolder);
+                                if (!archiver.verifyBag(finalDestinationFolder)) {
+                                    logger.cpmsError("Failed to verify [{}] using BagIt data", finalDestinationFolder);
+                                    return new StorageTaskResultBuilder()
+                                            .withSuccess(false)
+                                            .withSourcePath(storageTask.getSourcePath())
+                                            .withDestinationPath(storageTask.getDestinationPath())
+                                            .withErrorMessage(String.format("Failed to verify [%s] using BagIt data",
+                                                            finalDestinationFolder))
+                                            .build();
+                                }
+                                logger.cpmsInfo("Reverting [{}] to original format",  finalDestinationFolder);
+                                archiver.debagify(finalDestinationFolder);
+                            }
+                            finalDestinationPath = finalDestinationFolder;
+                        }
                         return new StorageTaskResultBuilder()
                                 .withSuccess(true)
                                 .withSourcePath(storageTask.getSourcePath())
-                                .withDestinationPath(storageTask.getDestinationPath())
+                                .withDestinationPath(finalDestinationPath.toAbsolutePath().toString())
                                 .build();
                     } else {
-                        logger.error("Failed to upload file!");
+                        logger.error("Failed to download file!");
                         return new StorageTaskResultBuilder()
                                 .withSuccess(false)
                                 .withSourcePath(storageTask.getSourcePath())
                                 .withDestinationPath(storageTask.getDestinationPath())
-                                .withErrorMessage("Failed to upload file!")
+                                .withErrorMessage("Failed to download file!")
                                 .build();
                     }
                 } catch (IOException e) {
-                    logger.error("Failed to upload file due to IOException!");
+                    logger.error("Failed to download file due to IOException!");
                     return new StorageTaskResultBuilder()
                             .withSuccess(false)
                             .withSourcePath(storageTask.getSourcePath())
@@ -198,16 +254,7 @@ public class StorageEngine {
             }
             case "delete": {
                 logger.info("Delete task");
-                /*if (storageTask.getS3Path().endsWith("/")) {
-                    return objectStorage.deleteBucketContents(storageTask.getS3Bucket(), storageTask.getS3Path());
-                } else {
-                    if (objectStorage.headObject(storageTask.getS3Bucket(), storageTask.getS3Path()) == null) {
-                        logger.cpmsError("S3 object [{}/{}] does not exist to download",
-                                storageTask.getS3Bucket(), storageTask.getS3Path());
-                        return false;
-                    }
-                    return objectStorage.deleteBucketObject(storageTask.getS3Bucket(), storageTask.getS3Path());
-                }*/
+                // Todo: Implement or delete this section
                 return new StorageTaskResultBuilder().withSuccess(true).build();
             }
             default: {
@@ -219,77 +266,6 @@ public class StorageEngine {
             }
         }
     }
-
-    /*
-        AWS Instance Methods
-     */
-
-    /*private boolean listS3Buckets() {
-        logger.trace("listS3Buckets()");
-        try {
-            S3ObjectStorage objectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-            objectStorage.listBuckets().stream().map(Bucket::name).forEach(System.out::println);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }*/
-
-    /*private boolean listS3BucketObjects(String bucket) {
-        logger.trace("listS3BucketObjects({})", bucket);
-        try {
-            S3ObjectStorage objectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-            objectStorage.listBucketObjects(bucket).stream().map(S3Object::key).forEach(System.out::println);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }*/
-
-    /*private boolean listS3BucketObjectsWithPrefix(String bucket, String prefix) {
-        logger.trace("listS3BucketObjectsWithPrefix({},{})", bucket, prefix);
-        try {
-            S3ObjectStorage objectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-            objectStorage.listBucketObjects(bucket, prefix).stream().map(S3Object::key).forEach(System.out::println);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }*/
-
-    /*private boolean uploadToS3(Path localPath, String bucket, String prefix) {
-        logger.trace("uploadToS3({},{},{})", localPath, bucket, prefix);
-        try {
-            if (!Files.exists(localPath)) {
-                logger.cpmsError("Local path to upload [{}] does not exist", localPath);
-                return false;
-            }
-            String key = (prefix == null || prefix.isEmpty()) ?
-                    String.format("%s", localPath.getFileName()) :
-                    String.format("%s/%s", prefix, localPath.getFileName());
-            if (Files.isRegularFile(localPath)) {
-                return uploadSingleFileToS3(localPath, bucket, key);
-            } else {
-                return uploadBaggedDirectoryToS3(localPath, bucket, prefix);
-            }
-        } catch (Exception e) {
-            logger.cpmsError("Failed to upload path [{}] to S3 [{}/{}]", localPath, bucket, prefix);
-            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
-            return false;
-        }
-    }*/
-
-    /*private boolean uploadSingleFileToS3(Path localFile, String bucket, String key) {
-        logger.trace("uploadSingleFileToS3({},{},{})", localFile, bucket, key);
-        try {
-            S3ObjectStorage objectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-            return objectStorage.uploadFile(localFile, bucket, key);
-        } catch (Exception e) {
-            logger.cpmsError("Failed to upload file [{}] to S3 [{}/{}]", localFile, bucket, key);
-            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
-            return false;
-        }
-    }*/
 
     private boolean uploadBaggedDirectoryToS3(Path localPath, String bucket, String prefix) {
         logger.trace("uploadBaggedDirectoryToS3('{}','{}','{}')", localPath, bucket, prefix);
@@ -498,147 +474,6 @@ public class StorageEngine {
         }
         return true;
     }*/
-
-    /*
-         Azure Instance Methods
-     */
-
-    /*private boolean listAzureBlobContainers() {
-        logger.trace("listAzureBlobContainers()");
-        try {
-            AzureBlobStorage blobStorage = new AzureBlobStorageBuilder()
-                    .withLogger(logger)
-                    .withEndpoint("DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;")
-                    //.withStaticCredentials("devstoreaccount1", "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==")
-                    .build();
-            blobStorage.listContainers().stream().map(BlobContainerItem::getName).forEach(System.out::println);
-            return true;
-        } catch (Exception e) {
-            logger.error(ExceptionUtils.getStackTrace(e));
-            return false;
-        }
-    }*/
-
-    /*private boolean listAzureBlobContainerObjects(String blobContainer) {
-        logger.trace("listAzureBlobContainerObjects({})", blobContainer);
-        try {
-            AzureBlobStorage blobStorage = new AzureBlobStorageBuilder()
-                    .withLogger(logger)
-                    .withEndpoint("https://127.0.0.1:10000")
-                    .withStaticCredentials("devstoreaccount1", "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==")
-                    .build();
-            blobStorage.listContainerBlobs(blobContainer).stream().map(BlobItem::getName).forEach(System.out::println);
-            return true;
-        } catch (Exception e) {
-            logger.error(ExceptionUtils.getStackTrace(e));
-            return false;
-        }
-    }*/
-
-    private boolean listAzureBlobContainerObjectsWithPrefix(String bucket, String prefix) {
-        logger.trace("listAzureBlobContainerObjectsWithPrefix({},{})", bucket, prefix);
-        try {
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private boolean uploadToAzure(Path localPath, String bucket, String prefix) {
-        logger.trace("uploadToAzure({},{},{})", localPath, bucket, prefix);
-        try {
-            if (!Files.exists(localPath)) {
-                logger.cpmsError("Local path to upload [{}] does not exist", localPath);
-                return false;
-            }
-            String key = (prefix == null || prefix.isEmpty()) ?
-                    String.format("%s", localPath.getFileName()) :
-                    String.format("%s/%s", prefix, localPath.getFileName());
-            if (Files.isRegularFile(localPath)) {
-                //return uploadSingleFileToS3(localPath, bucket, key);
-            } else {
-                //return uploadBaggedDirectoryToS3(localPath, bucket, prefix);
-            }
-        } catch (Exception e) {
-            logger.cpmsError("Failed to upload path [{}] to Azure [{}/{}]", localPath, bucket, prefix);
-            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
-        }
-        return false;
-    }
-
-    private boolean uploadSingleFileToAzure(Path localFile, String bucket, String key) {
-        logger.trace("uploadSingleFileToAzure({},{},{})", localFile, bucket, key);
-        try {
-            return true;
-        } catch (Exception e) {
-            logger.cpmsError("Failed to upload file [{}] to Azure [{}/{}]", localFile, bucket, key);
-            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
-            return false;
-        }
-    }
-
-    private boolean uploadBaggedDirectoryToAzure(Path localPath, String bucket, String prefix) {
-        logger.trace("uploadBaggedDirectoryToAzure('{}','{}','{}')", localPath, bucket, prefix);
-        try {
-            Archiver archiver = new ArchiverBuilder().withLogger(logger).build();
-            long uncompressedSize = FileUtils.sizeOfDirectory(localPath.toFile());
-            logger.trace("uncompressedSize: {}", humanReadableByteCount(uncompressedSize));
-            try {
-                long freeSpace = Files.getFileStore(localPath).getUsableSpace();
-                logger.trace("freeSpace: {}", humanReadableByteCount(freeSpace));
-                long requiredSpace = uncompressedSize + (1024 * 1024 * 1024);
-                logger.trace("requiredSpace: {}", humanReadableByteCount(requiredSpace));
-                if (requiredSpace > freeSpace) {
-                    logger.cpmsError("Not enough free space to bag up [{}], needs [{}] has [{}]",
-                            localPath.toAbsolutePath(), humanReadableByteCount(requiredSpace),
-                            humanReadableByteCount(freeSpace));
-                    return false;
-                }
-            } catch (IOException e) {
-                logger.cpmsError("Failed to locate path to upload [{}]", localPath);
-                return false;
-            }
-            logger.cpmsInfo("Bagging up [{}]", localPath);
-            Path bagged = archiver.bagItUp(localPath);
-            if (bagged == null || !Files.exists(bagged)) {
-                logger.cpmsError("Failed to bag up directory [{}]", localPath);
-                return false;
-            }
-            logger.cpmsInfo("Verifying bagging on [{}]", localPath);
-            if (!archiver.verifyBag(localPath)) {
-                logger.cpmsError("Failed to bag up directory [{}]", localPath);
-                archiver.debagify(localPath);
-                return false;
-            }
-            logger.cpmsInfo("Boxing up [{}]", localPath.toAbsolutePath());
-            Path boxed = archiver.archive(bagged.toFile());
-            logger.cpmsInfo("Reverting bagging on directory [{}]", localPath);
-            archiver.debagify(localPath);
-            if (boxed == null || !Files.exists(boxed)) {
-                logger.cpmsError("Failed to box up directory [{}]", localPath);
-                return false;
-            }
-            String key = (prefix == null || prefix.isEmpty()) ?
-                    String.format("%s", boxed.getFileName()) :
-                    String.format("%s/%s", prefix, boxed.getFileName());
-            logger.cpmsInfo("Uploading [{}] to [{}/{}]", boxed, bucket, key);
-            //ObjectStorageV2 objectStorage = new ObjectStorageBuilder().withLogger(logger).build();
-            boolean success = false;
-            try {
-                //success = objectStorage.uploadFile(boxed, bucket, key);
-                Files.delete(boxed);
-                return success;
-            } catch (IOException e) {
-                logger.cpmsError("Failed to upload file [{}] to S3 [{}/{}]", boxed, bucket, key);
-                logger.debug("IOException: {}", ExceptionUtils.getStackTrace(e));
-                return success;
-            }
-        } catch (Exception e) {
-            logger.cpmsError("Failed to upload bagged directory [{}] to S3 [{}/{}]", localPath, bucket, prefix);
-            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
-            return false;
-        }
-    }
 
     public CPMSLogger getLogger() {
         return logger;

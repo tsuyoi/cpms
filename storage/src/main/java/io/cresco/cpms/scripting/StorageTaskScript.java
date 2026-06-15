@@ -38,6 +38,12 @@ public class StorageTaskScript extends ScriptedTaskScript {
     @SerializedName("source_path")
     public String sourcePath;
 
+    @SerializedName("source_compression")
+    public String sourceCompression;
+
+    @SerializedName("source_archiving")
+    public String sourceArchiving;
+
     @SerializedName("destination_path")
     public String destinationPath;
 

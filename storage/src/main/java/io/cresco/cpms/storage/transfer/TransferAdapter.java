@@ -55,8 +55,8 @@ public interface TransferAdapter {
      * @param container         Name of container in which to upload file
      * @param key               Key to use inside container
      * @param destinationFolder The folder in which to download the remote object
-     * @return Whether the object was successfully downloaded
+     * @return The final Path object of the downloaded file
      * @throws IOException if the object doesn't exist remotely or local download fails
      */
-    public boolean downloadObject(String container, String key, Path destinationFolder) throws IOException;
+    public Path downloadObject(String container, String key, Path destinationFolder) throws IOException;
 }

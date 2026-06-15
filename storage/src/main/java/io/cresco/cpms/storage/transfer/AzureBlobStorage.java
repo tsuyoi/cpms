@@ -120,7 +120,7 @@ public class AzureBlobStorage implements TransferAdapter {
         }
     }
 
-    private boolean downloadBlobToFile(String container, String key, Path destinationDirectory) throws IOException {
+    private Path downloadBlobToFile(String container, String key, Path destinationDirectory) throws IOException {
         logger.debug("downloadBlob({}, {}, {})", container, key, destinationDirectory);
         if (!doesContainerExist(container))
             throw new IOException("target container does not exist");
@@ -139,7 +139,7 @@ public class AzureBlobStorage implements TransferAdapter {
                 } catch (IOException e) {
                     logger.cpmsError("Output directory [{}] does not exist and could not be created",
                             destinationDirectory.toAbsolutePath());
-                    return false;
+                    return null;
                 }
             }
             int prefixLength = key.lastIndexOf("/") + 1;
@@ -156,13 +156,15 @@ public class AzureBlobStorage implements TransferAdapter {
                 localChecksum = DigestUtils.md5Hex(in);
             } catch (Exception e) {
                 logger.error("Failed to compute the local MD5 checksum of downloaded file: {}", e);
-                return false;
+                return null;
             }
             logger.trace("Local MD5 checksum: {}", localChecksum);
-            return localChecksum.equals(azureChecksum);
+            if (localChecksum.equals(azureChecksum))
+                return outFile;
+            return null;
         } catch (Exception e) {
             logger.cpmsError("Failed to download file: {}", e.getMessage());
-            return false;
+            return null;
         }
     }
 
@@ -265,11 +267,11 @@ public class AzureBlobStorage implements TransferAdapter {
      * @param container         Name of container in which to upload file
      * @param key               Key to use inside container
      * @param destinationFolder The folder in which to download the remote object
-     * @return Whether the object was successfully downloaded
+     * @return The final Path object of the downloaded file
      * @throws IOException if the object doesn't exist remotely or local download fails
      */
     @Override
-    public boolean downloadObject(String container, String key, Path destinationFolder) throws IOException {
+    public Path downloadObject(String container, String key, Path destinationFolder) throws IOException {
         return downloadBlobToFile(container, key, destinationFolder);
     }
 
