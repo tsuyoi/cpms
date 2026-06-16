@@ -9,11 +9,11 @@ public class StorageParameters {
     private static final String AZURE_PREFIX = "azb://";
     private static final String CLOUD_PATH_SEPARATOR = "/";
 
-    public StorageProvider storageProvider;
-    public String container;
-    public String prefix;
-    public String pathStr;
-    public Path path;
+    private final StorageProvider storageProvider;
+    private String container;
+    private String prefix;
+    private final String pathStr;
+    private Path path;
 
     public StorageParameters(String path) {
         this.pathStr = path;
@@ -45,5 +45,25 @@ public class StorageParameters {
                 this.container = cloudPath;
             }
         }
+    }
+
+    public StorageProvider getStorageProvider() {
+        return storageProvider;
+    }
+
+    public String getContainer() {
+        return container;
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public String getPathStr() {
+        return pathStr;
+    }
+
+    public Path getPath() {
+        return path;
     }
 }

@@ -55,6 +55,7 @@ public class Archiver {
         return switch (compressionType) {
             case TAR -> ".tar";
             case GZIP -> ".tar.gz";
+            case NONE -> "";
         };
     }
 
@@ -172,6 +173,8 @@ public class Archiver {
                     logger.error("bagItUp : Unsupported algorithm selected.");
                     return null;
                 }
+                break;
+            case None:
                 break;
         }
         return folder;
@@ -374,6 +377,8 @@ public class Archiver {
                     path = Paths.get(String.format("%s%s", files[0].getAbsolutePath(), ".tar.gz"));
                     compress(path, files);
                     return path;
+                case NONE:
+                    return Paths.get(files[0].getAbsolutePath());
                 default:
                     logger.error("Supplied archive type [{}] is not currently supported", archiveCompression);
                     return null;

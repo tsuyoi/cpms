@@ -1,5 +1,8 @@
 package io.cresco.cpms.scripting;
 
+import io.cresco.cpms.statics.ArchiveCompression;
+import io.cresco.cpms.statics.BagItHashingAlgorithm;
+import io.cresco.cpms.statics.BagItType;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Map;
@@ -10,9 +13,11 @@ public class StorageTask implements ScriptedTask {
     private final String type;
     private final String action;
     private final String sourcePath;
-    private final String sourceCompression;
-    private final String sourceArchiving;
     private final String destinationPath;
+    private BagItType destinationArchiving;
+    private BagItHashingAlgorithm destinationHashing;
+    private final boolean destinationHiddenFiles;
+    private ArchiveCompression destinationCompression;
     private final String storageTaskJSON;
 
     public StorageTask(Map<String, String> storageTaskMap) throws ScriptException {
@@ -50,21 +55,18 @@ public class StorageTask implements ScriptedTask {
                     String.format("Storage task [%s] is missing required parameter [sourcePath]", getName())
             );
         this.sourcePath = storageTaskScript.sourcePath;
-        if (getAction().equals("upload") && StringUtils.isBlank(storageTaskScript.sourceCompression))
-            throw new ScriptException(
-                    String.format("Storage upload task [%s] is missing required parameter [sourceCompression]", getName())
-            );
-        this.sourceCompression = storageTaskScript.sourceCompression;
-        if (getAction().equals("upload") && StringUtils.isBlank(storageTaskScript.sourceArchiving))
-            throw new ScriptException(
-                    String.format("Storage upload task [%s] is missing required parameter [sourceArchiving]", getName())
-            );
-        this.sourceArchiving = storageTaskScript.sourceArchiving;
         if ((getAction().equals("upload") || getAction().equals("download")) && StringUtils.isBlank(storageTaskScript.destinationPath))
             throw new ScriptException(
                     String.format("Storage task [%s] is missing required parameter [destinationPath]", getName())
             );
         this.destinationPath = storageTaskScript.destinationPath;
+        if (storageTaskScript.destinationArchiving != null)
+            this.destinationArchiving = BagItType.valueOf(storageTaskScript.destinationArchiving);
+        if (storageTaskScript.destinationHashing != null)
+            this.destinationHashing = BagItHashingAlgorithm.valueOf(storageTaskScript.destinationHashing);
+        this.destinationHiddenFiles = storageTaskScript.destinationHiddenFiles;
+        if (storageTaskScript.destinationCompression != null)
+            this.destinationCompression = ArchiveCompression.valueOf(storageTaskScript.destinationCompression);
     }
 
     public String getId() { return id; }
@@ -85,16 +87,24 @@ public class StorageTask implements ScriptedTask {
         return sourcePath;
     }
 
-    public String getSourceCompression() {
-        return sourceCompression;
-    }
-
-    public String getSourceArchiving() {
-        return sourceArchiving;
-    }
-
     public String getDestinationPath() {
         return destinationPath;
+    }
+
+    public BagItType getDestinationArchiving() {
+        return destinationArchiving;
+    }
+
+    public BagItHashingAlgorithm getDestinationHashing() {
+        return destinationHashing;
+    }
+
+    public boolean getDestinationHiddenFiles() {
+        return destinationHiddenFiles;
+    }
+
+    public ArchiveCompression getDestinationCompression() {
+        return destinationCompression;
     }
 
     public String getStorageTaskJSON() {
@@ -111,15 +121,19 @@ public class StorageTask implements ScriptedTask {
                         - Storage Task (ID: %s, Name: %s)
                         \tAction: %s
                         \tSource Path: %s
-                        \tSource Compression: %s
-                        \tSource Archiving: %s
-                        \tDestination Path: %s""",
+                        \tDestination Path: %s
+                        \tDestination Archiving: %s
+                        \tDestination Hashing: %s
+                        \tDestination Hidden Files: %b
+                        \tDestination Compression: %s""",
                 getId(), getName(),
                 getAction(),
                 getSourcePath(),
-                getSourceCompression(),
-                getSourceArchiving(),
-                getDestinationPath()
+                getDestinationPath(),
+                getDestinationArchiving(),
+                getDestinationHashing(),
+                getDestinationHiddenFiles(),
+                getDestinationCompression()
         );
     }
 }

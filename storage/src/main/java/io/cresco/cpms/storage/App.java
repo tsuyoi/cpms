@@ -8,6 +8,8 @@ import io.cresco.cpms.processing.StorageEngine;
 import io.cresco.cpms.processing.StorageTaskResult;
 import io.cresco.cpms.scripting.ScriptException;
 import io.cresco.cpms.scripting.StorageTask;
+import io.cresco.cpms.statics.ArchiveCompression;
+import io.cresco.cpms.statics.BagItType;
 import io.cresco.cpms.storage.encapsulation.Archiver;
 import io.cresco.cpms.storage.transfer.AzureBlobStorage;
 import io.cresco.cpms.storage.transfer.AzureBlobStorageBuilder;
@@ -15,6 +17,7 @@ import io.cresco.cpms.storage.transfer.S3ObjectStorage;
 import io.cresco.cpms.storage.transfer.S3ObjectStorageBuilder;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
+import net.sourceforge.argparse4j.impl.type.ReflectArgumentType;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -39,6 +42,10 @@ public class App {
                 .defaultHelp(true)
                 .description("Command line storage management utility");
         parser.addArgument("-v", "--verbose").action(Arguments.storeTrue());
+        parser.addArgument("-a", "--archive").type(new ReflectArgumentType<>(BagItType.class))
+                .choices(BagItType.values()).setDefault(BagItType.None);
+        parser.addArgument("-c", "--compress").type(new ReflectArgumentType<>(ArchiveCompression.class))
+                .choices(ArchiveCompression.values()).setDefault(ArchiveCompression.NONE);
         parser.addArgument("command").nargs("?");
         parser.addArgument("parameters").nargs("*");
         Namespace ns = null;
@@ -50,6 +57,8 @@ public class App {
         }
 
         Boolean verbose = ns.getBoolean("verbose");
+        BagItType bagItType = ns.get("archive");
+        ArchiveCompression archiveCompression = ns.get("compress");
         String command = ns.getString("command");
         List<String> parameters = ns.getList("parameters");
 
@@ -133,6 +142,11 @@ public class App {
                     storageTaskJSON.put("source_path", parameters.getFirst());
                     break;
                 case "upload":
+                    storageTaskJSON.put("source_path", parameters.get(0));
+                    storageTaskJSON.put("destination_path", parameters.get(1));
+                    storageTaskJSON.put("destination_archiving", bagItType.name());
+                    storageTaskJSON.put("destination_compression", archiveCompression.name());
+                    break;
                 case "download":
                 case "copy":
                     storageTaskJSON.put("source_path", parameters.get(0));

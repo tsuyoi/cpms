@@ -3,6 +3,7 @@ package io.cresco.cpms.processing;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.scripting.StorageTask;
+import io.cresco.cpms.statics.BagItType;
 import io.cresco.cpms.storage.encapsulation.Archiver;
 import io.cresco.cpms.storage.encapsulation.ArchiverBuilder;
 import io.cresco.cpms.storage.transfer.*;
@@ -53,25 +54,25 @@ public class StorageEngine {
             case "list": {
                 logger.info("List task");
                 StorageParameters sourceStorageParameters = new StorageParameters(storageTask.getSourcePath());
-                logger.trace("Source Storage Provider: {}", sourceStorageParameters.storageProvider);
-                logger.trace("Source Container: {}", sourceStorageParameters.container);
-                logger.trace("Source Prefix: {}", sourceStorageParameters.prefix);
+                logger.trace("Source Storage Provider: {}", sourceStorageParameters.getStorageProvider());
+                logger.trace("Source Container: {}", sourceStorageParameters.getContainer());
+                logger.trace("Source Prefix: {}", sourceStorageParameters.getPrefix());
                 TransferAdapter transferAdapter;
-                if (sourceStorageParameters.storageProvider == StorageProvider.AWS) {
+                if (sourceStorageParameters.getStorageProvider() == StorageProvider.AWS) {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
-                } else if (sourceStorageParameters.storageProvider == StorageProvider.Azure) {
+                } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
-                            sourceStorageParameters.storageProvider.name());
+                            sourceStorageParameters.getStorageProvider().name());
                     return new StorageTaskResultBuilder().withSuccess(false).withSourcePath(storageTask.getSourcePath())
                             .build();
                 }
-                if (sourceStorageParameters.prefix != null) {
-                    transferAdapter.listObjectsInContainer(sourceStorageParameters.container,
-                            sourceStorageParameters.prefix).forEach(System.out::println);
-                } else if (sourceStorageParameters.container != null) {
-                    transferAdapter.listObjectsInContainer(sourceStorageParameters.container)
+                if (sourceStorageParameters.getPrefix() != null) {
+                    transferAdapter.listObjectsInContainer(sourceStorageParameters.getContainer(),
+                            sourceStorageParameters.getPrefix()).forEach(System.out::println);
+                } else if (sourceStorageParameters.getContainer() != null) {
+                    transferAdapter.listObjectsInContainer(sourceStorageParameters.getContainer())
                             .forEach(System.out::println);
                 } else {
                     transferAdapter.listTopLevelContainers().forEach(System.out::println);
@@ -92,33 +93,84 @@ public class StorageEngine {
                 }
                 StorageParameters sourceStorageParameters = new StorageParameters(storageTask.getSourcePath());
                 logger.trace("Source Path: {}", storageTask.getSourcePath());
-                logger.trace("Source Storage Provider: {}", sourceStorageParameters.storageProvider);
+                logger.trace("Source Storage Provider: {}", sourceStorageParameters.getStorageProvider());
                 StorageParameters destinationStorageParameters = new StorageParameters(storageTask.getDestinationPath());
                 logger.trace("Destination Path: {}", storageTask.getDestinationPath());
-                logger.trace("Destination Storage Provider: {}", destinationStorageParameters.storageProvider);
-                logger.trace("Destination Container: {}", destinationStorageParameters.container);
-                logger.trace("Destination Prefix: {}", destinationStorageParameters.prefix);
+                logger.trace("Destination Storage Provider: {}", destinationStorageParameters.getStorageProvider());
+                logger.trace("Destination Container: {}", destinationStorageParameters.getContainer());
+                logger.trace("Destination Prefix: {}", destinationStorageParameters.getPrefix());
+                logger.trace("Destination Archiving: {}", storageTask.getDestinationArchiving());
+                logger.trace("Destination Hashing: {}", storageTask.getDestinationHashing());
+                logger.trace("Destination Hidden Files: {}", storageTask.getDestinationHiddenFiles());
+                logger.trace("Destination Compression: {}", storageTask.getDestinationCompression());
                 String destinationKey = "";
-                if (destinationStorageParameters.prefix != null && !destinationStorageParameters.prefix.isEmpty())
-                    destinationKey += destinationStorageParameters.prefix + "/";
-                destinationKey += sourceStorageParameters.path.getFileName();
+                if (destinationStorageParameters.getPrefix() != null && !destinationStorageParameters.getPrefix().isEmpty())
+                    destinationKey += destinationStorageParameters.getPrefix() + "/";
+                Path localWorkingPath = sourceStorageParameters.getPath();
+                if (Files.isDirectory(localWorkingPath)) {
+                    Archiver archiver = new ArchiverBuilder()
+                            .withBagItType(storageTask.getDestinationArchiving())
+                            .withBagItHashingAlgorithm(storageTask.getDestinationHashing())
+                            .withBagItHiddenfiles(storageTask.getDestinationHiddenFiles())
+                            .withArchiveCompression(storageTask.getDestinationCompression())
+                            .build();
+                    if (storageTask.getDestinationArchiving() != null && !storageTask.getDestinationArchiving().equals(BagItType.None)) {
+                        logger.cpmsInfo("Archiving directory [{}]", localWorkingPath);
+                        localWorkingPath = archiver.bagItUp(localWorkingPath).getFileName();
+                        if (localWorkingPath == null || !Files.exists(localWorkingPath)) {
+                            logger.cpmsError("Failed to archive directory [{}]", sourceStorageParameters.getPath());
+                            return new StorageTaskResultBuilder()
+                                    .withSuccess(false)
+                                    .withSourcePath(storageTask.getSourcePath())
+                                    .withDestinationPath(storageTask.getDestinationPath())
+                                    .withErrorMessage("Failed to archive directory!")
+                                    .build();
+                        }
+                        logger.cpmsInfo("Verifying archived directory [{}]", localWorkingPath);
+                        if (!archiver.verifyBag(localWorkingPath)) {
+                            logger.cpmsError("Failed to verify archived directory [{}]", sourceStorageParameters.getPath());
+                            return new StorageTaskResultBuilder()
+                                    .withSuccess(false)
+                                    .withSourcePath(storageTask.getSourcePath())
+                                    .withDestinationPath(storageTask.getDestinationPath())
+                                    .withErrorMessage("Failed to verify directory archiving!")
+                                    .build();
+                        }
+                    }
+                    if (storageTask.getDestinationCompression() != null && !storageTask.getDestinationArchiving().equals(BagItType.None)) {
+                        logger.cpmsInfo("Compressing directory [{}]", localWorkingPath);
+                        localWorkingPath = archiver.archive(localWorkingPath.toFile());
+                        if (localWorkingPath == null || !Files.exists(localWorkingPath)) {
+                            logger.cpmsError("Failed to compress directory [{}]", sourceStorageParameters.getPath());
+                            return new StorageTaskResultBuilder()
+                                    .withSuccess(false)
+                                    .withSourcePath(storageTask.getSourcePath())
+                                    .withDestinationPath(storageTask.getDestinationPath())
+                                    .withErrorMessage("Failed to compress directory!")
+                                    .build();
+                        }
+                    }
+                    if (storageTask.getDestinationArchiving() != null) {
+                        logger.cpmsInfo("Reverting archiving on directory [{}]", localWorkingPath);
+                        archiver.debagify(sourceStorageParameters.getPath());
+                    }
+                }
+                destinationKey += localWorkingPath.getFileName();
                 logger.trace("Destination Key: {}",  destinationKey);
-                // Todo: If archiving and/or compression is needed, perform here to pass the new path to the
-                //  TransferAdapter
                 TransferAdapter transferAdapter;
-                if (destinationStorageParameters.storageProvider == StorageProvider.AWS) {
+                if (destinationStorageParameters.getStorageProvider() == StorageProvider.AWS) {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
-                } else if (destinationStorageParameters.storageProvider == StorageProvider.Azure) {
+                } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
-                            destinationStorageParameters.storageProvider.name());
+                            destinationStorageParameters.getStorageProvider().name());
                     return new StorageTaskResultBuilder().withSuccess(false).withSourcePath(storageTask.getSourcePath())
                             .build();
                 }
                 try {
-                    if (transferAdapter.uploadFile(sourceStorageParameters.path, destinationStorageParameters.container,
-                            destinationKey)) {
+                    if (transferAdapter.uploadFile(localWorkingPath,
+                            destinationStorageParameters.getContainer(), destinationKey)) {
                         return new StorageTaskResultBuilder()
                                 .withSuccess(true)
                                 .withSourcePath(storageTask.getSourcePath())
@@ -156,25 +208,25 @@ public class StorageEngine {
                 }
                 StorageParameters sourceStorageParameters = new StorageParameters(storageTask.getSourcePath());
                 logger.trace("Source Path: {}", storageTask.getSourcePath());
-                logger.trace("Source Storage Provider: {}", sourceStorageParameters.storageProvider);
-                logger.trace("Source Container: {}", sourceStorageParameters.container);
-                logger.trace("Source Prefix: {}", sourceStorageParameters.prefix);
+                logger.trace("Source Storage Provider: {}", sourceStorageParameters.getStorageProvider());
+                logger.trace("Source Container: {}", sourceStorageParameters.getContainer());
+                logger.trace("Source Prefix: {}", sourceStorageParameters.getPrefix());
                 TransferAdapter transferAdapter;
-                if (sourceStorageParameters.storageProvider == StorageProvider.AWS) {
+                if (sourceStorageParameters.getStorageProvider() == StorageProvider.AWS) {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
-                } else if (sourceStorageParameters.storageProvider == StorageProvider.Azure) {
+                } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
-                            sourceStorageParameters.storageProvider.name());
+                            sourceStorageParameters.getStorageProvider().name());
                     return new StorageTaskResultBuilder().withSuccess(false).build();
                 }
                 StorageParameters destinationStorageParameters = new StorageParameters(storageTask.getDestinationPath());
                 logger.trace("Source Path: {}", storageTask.getDestinationPath());
-                logger.trace("Source Storage Provider: {}", destinationStorageParameters.storageProvider);
+                logger.trace("Source Storage Provider: {}", destinationStorageParameters.getStorageProvider());
                 try {
-                    Path finalDestinationPath = transferAdapter.downloadObject(sourceStorageParameters.container, 
-                            sourceStorageParameters.prefix, destinationStorageParameters.path);
+                    Path finalDestinationPath = transferAdapter.downloadObject(sourceStorageParameters.getContainer(),
+                            sourceStorageParameters.getPrefix(), destinationStorageParameters.getPath());
                     if (finalDestinationPath != null) {
                         Archiver archiver = new ArchiverBuilder().withLogger(logger).build();
                         if (archiver.isArchive(finalDestinationPath)) {
@@ -184,10 +236,10 @@ public class StorageEngine {
                                 suffix = finalDestinationPath.toString().lastIndexOf(".tgz");
                             if (suffix > 0)
                                 folder = finalDestinationPath.toString().substring(suffix);
-                            Path finalDestinationFolder = destinationStorageParameters.path.resolve(folder);
+                            Path finalDestinationFolder = destinationStorageParameters.getPath().resolve(folder);
                             logger.cpmsInfo("Unboxing [{}] to [{}]",  finalDestinationPath,
                                     finalDestinationFolder);
-                            if (!archiver.unarchive(finalDestinationPath, destinationStorageParameters.path) || 
+                            if (!archiver.unarchive(finalDestinationPath, destinationStorageParameters.getPath()) ||
                                     !Files.exists(finalDestinationFolder)) {
                                 logger.cpmsError("Failed to unbox [{}] to [{}]",  finalDestinationPath,
                                         finalDestinationFolder);

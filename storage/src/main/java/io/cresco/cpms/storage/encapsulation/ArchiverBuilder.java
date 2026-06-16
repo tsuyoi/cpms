@@ -16,29 +16,31 @@ public class ArchiverBuilder {
 
     public ArchiverBuilder() {
         this.logger = new BasicCPMSLoggerBuilder().withClass(Archiver.class).build();
-        this.bagitType = CPMSStatics.DEFAULT_BAGIT_TYPE;
         this.bagitHashingAlgorithm = CPMSStatics.DEFAULT_BAGIT_HASHING;
         this.bagitHiddenFiles = CPMSStatics.DEFAULT_HIDDEN_FILES;
-        this.archiveCompression = CPMSStatics.DEFAULT_ARCHIVE_COMPRESSION;
     }
 
     public ArchiverBuilder withBagItType(BagItType bagitType) {
-        this.bagitType = bagitType;
+        if (bagitType != null)
+            this.bagitType = bagitType;
         return this;
     }
 
     public ArchiverBuilder withBagItHashingAlgorithm(BagItHashingAlgorithm bagItHashingAlgorithm) {
-        this.bagitHashingAlgorithm = bagItHashingAlgorithm;
+        if (bagItHashingAlgorithm != null)
+            this.bagitHashingAlgorithm = bagItHashingAlgorithm;
         return this;
     }
 
     public ArchiverBuilder withBagItHiddenfiles(boolean bagItHiddenfiles) {
-        this.bagitHiddenFiles = bagItHiddenfiles;
+        if (bagItHiddenfiles)
+            this.bagitHiddenFiles = bagItHiddenfiles;
         return this;
     }
 
     public ArchiverBuilder withArchiveCompression(ArchiveCompression archiveCompression) {
-        this.archiveCompression = archiveCompression;
+        if (archiveCompression != null)
+            this.archiveCompression = archiveCompression;
         return this;
     }
 

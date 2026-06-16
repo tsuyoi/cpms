@@ -38,11 +38,17 @@ public class StorageTaskScript extends ScriptedTaskScript {
     @SerializedName("source_path")
     public String sourcePath;
 
-    @SerializedName("source_compression")
-    public String sourceCompression;
+    @SerializedName("destination_archiving")
+    public String destinationArchiving;
 
-    @SerializedName("source_archiving")
-    public String sourceArchiving;
+    @SerializedName("destination_hashing")
+    public String destinationHashing;
+
+    @SerializedName("destination_hidden_files")
+    public boolean destinationHiddenFiles;
+
+    @SerializedName("destination_compression")
+    public String destinationCompression;
 
     @SerializedName("destination_path")
     public String destinationPath;
@@ -56,6 +62,10 @@ public class StorageTaskScript extends ScriptedTaskScript {
         toPrint.put("action", this.action);
         toPrint.put("source_path", this.sourcePath);
         toPrint.put("destination_path", this.destinationPath);
+        toPrint.put("destination_archiving", this.destinationArchiving);
+        toPrint.put("destination_hashing", this.destinationHashing);
+        toPrint.put("destination_hidden_files", this.destinationHiddenFiles);
+        toPrint.put("destination_compression", this.destinationCompression);
         return toPrint.toString();
     }
 }

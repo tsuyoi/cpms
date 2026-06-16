@@ -2,10 +2,10 @@ package io.cresco.cpms.statics;
 
 public class CPMSStatics {
     // Archiver
-    public static final BagItType DEFAULT_BAGIT_TYPE = BagItType.DotFile;
+    public static final BagItType DEFAULT_BAGIT_TYPE = BagItType.None;
     public static final BagItHashingAlgorithm DEFAULT_BAGIT_HASHING = BagItHashingAlgorithm.MD5;
     public static final boolean DEFAULT_HIDDEN_FILES = true;
-    public static final ArchiveCompression DEFAULT_ARCHIVE_COMPRESSION = ArchiveCompression.GZIP;
+    public static final ArchiveCompression DEFAULT_ARCHIVE_COMPRESSION = ArchiveCompression.NONE;
 
     // ObjectStorage
     public static final String UNCOMPRESSED_SIZE_METADATA_TAG_KEY = "uncompressedsize";
