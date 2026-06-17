@@ -9,14 +9,9 @@ import io.cresco.cpms.storage.encapsulation.ArchiverBuilder;
 import io.cresco.cpms.storage.transfer.*;
 import io.cresco.cpms.storage.utilities.StorageParameters;
 import io.cresco.cpms.storage.utilities.StorageProvider;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.IOException;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 @SuppressWarnings({"unused", "WeakerAccess", "BooleanMethodIsAlwaysInverted", "SameParameterValue"})
 public class StorageEngine {
@@ -69,13 +64,15 @@ public class StorageEngine {
                             .build();
                 }
                 if (sourceStorageParameters.getPrefix() != null) {
-                    transferAdapter.listObjectsInContainer(sourceStorageParameters.getContainer(),
-                            sourceStorageParameters.getPrefix()).forEach(System.out::println);
+                    transferAdapter.listFilesInPath(String.format("%s%s%s",
+                            sourceStorageParameters.getContainer(),
+                            StorageParameters.CLOUD_PATH_SEPARATOR,
+                            sourceStorageParameters.getPrefix())).forEach(System.out::println);
                 } else if (sourceStorageParameters.getContainer() != null) {
-                    transferAdapter.listObjectsInContainer(sourceStorageParameters.getContainer())
+                    transferAdapter.listFilesInPath(sourceStorageParameters.getContainer())
                             .forEach(System.out::println);
                 } else {
-                    transferAdapter.listTopLevelContainers().forEach(System.out::println);
+                    transferAdapter.listFilesInPath("").forEach(System.out::println);
                 }
                 return new StorageTaskResultBuilder().withSuccess(true).withSourcePath(storageTask.getSourcePath())
                         .build();
@@ -96,7 +93,8 @@ public class StorageEngine {
                 logger.trace("Source Storage Provider: {}", sourceStorageParameters.getStorageProvider());
                 StorageParameters destinationStorageParameters = new StorageParameters(storageTask.getDestinationPath());
                 logger.trace("Destination Path: {}", storageTask.getDestinationPath());
-                logger.trace("Destination Storage Provider: {}", destinationStorageParameters.getStorageProvider());
+                logger.trace("Destination Storage Provider: {}",
+                        destinationStorageParameters.getStorageProvider());
                 logger.trace("Destination Container: {}", destinationStorageParameters.getContainer());
                 logger.trace("Destination Prefix: {}", destinationStorageParameters.getPrefix());
                 logger.trace("Destination Archiving: {}", storageTask.getDestinationArchiving());
@@ -104,7 +102,8 @@ public class StorageEngine {
                 logger.trace("Destination Hidden Files: {}", storageTask.getDestinationHiddenFiles());
                 logger.trace("Destination Compression: {}", storageTask.getDestinationCompression());
                 String destinationKey = "";
-                if (destinationStorageParameters.getPrefix() != null && !destinationStorageParameters.getPrefix().isEmpty())
+                if (destinationStorageParameters.getPrefix() != null &&
+                        !destinationStorageParameters.getPrefix().isEmpty())
                     destinationKey += destinationStorageParameters.getPrefix() + "/";
                 Path localWorkingPath = sourceStorageParameters.getPath();
                 if (Files.isDirectory(localWorkingPath)) {
@@ -114,11 +113,13 @@ public class StorageEngine {
                             .withBagItHiddenfiles(storageTask.getDestinationHiddenFiles())
                             .withArchiveCompression(storageTask.getDestinationCompression())
                             .build();
-                    if (storageTask.getDestinationArchiving() != null && !storageTask.getDestinationArchiving().equals(BagItType.None)) {
+                    if (storageTask.getDestinationArchiving() != null &&
+                            !storageTask.getDestinationArchiving().equals(BagItType.None)) {
                         logger.cpmsInfo("Archiving directory [{}]", localWorkingPath);
                         localWorkingPath = archiver.bagItUp(localWorkingPath).getFileName();
                         if (localWorkingPath == null || !Files.exists(localWorkingPath)) {
-                            logger.cpmsError("Failed to archive directory [{}]", sourceStorageParameters.getPath());
+                            logger.cpmsError("Failed to archive directory [{}]",
+                                    sourceStorageParameters.getPath());
                             return new StorageTaskResultBuilder()
                                     .withSuccess(false)
                                     .withSourcePath(storageTask.getSourcePath())
@@ -128,7 +129,8 @@ public class StorageEngine {
                         }
                         logger.cpmsInfo("Verifying archived directory [{}]", localWorkingPath);
                         if (!archiver.verifyBag(localWorkingPath)) {
-                            logger.cpmsError("Failed to verify archived directory [{}]", sourceStorageParameters.getPath());
+                            logger.cpmsError("Failed to verify archived directory [{}]",
+                                    sourceStorageParameters.getPath());
                             return new StorageTaskResultBuilder()
                                     .withSuccess(false)
                                     .withSourcePath(storageTask.getSourcePath())
@@ -137,11 +139,13 @@ public class StorageEngine {
                                     .build();
                         }
                     }
-                    if (storageTask.getDestinationCompression() != null && !storageTask.getDestinationArchiving().equals(BagItType.None)) {
+                    if (storageTask.getDestinationCompression() != null &&
+                            !storageTask.getDestinationArchiving().equals(BagItType.None)) {
                         logger.cpmsInfo("Compressing directory [{}]", localWorkingPath);
                         localWorkingPath = archiver.archive(localWorkingPath.toFile());
                         if (localWorkingPath == null || !Files.exists(localWorkingPath)) {
-                            logger.cpmsError("Failed to compress directory [{}]", sourceStorageParameters.getPath());
+                            logger.cpmsError("Failed to compress directory [{}]",
+                                    sourceStorageParameters.getPath());
                             return new StorageTaskResultBuilder()
                                     .withSuccess(false)
                                     .withSourcePath(storageTask.getSourcePath())
@@ -157,24 +161,33 @@ public class StorageEngine {
                 }
                 destinationKey += localWorkingPath.getFileName();
                 logger.trace("Destination Key: {}",  destinationKey);
+                String finalDestinationKey
+                        ;
                 TransferAdapter transferAdapter;
                 if (destinationStorageParameters.getStorageProvider() == StorageProvider.AWS) {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
+                    finalDestinationKey = StorageParameters.AWS_PREFIX;
                 } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
+                    finalDestinationKey = StorageParameters.AZURE_PREFIX;
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             destinationStorageParameters.getStorageProvider().name());
-                    return new StorageTaskResultBuilder().withSuccess(false).withSourcePath(storageTask.getSourcePath())
+                    return new StorageTaskResultBuilder()
+                            .withSuccess(false)
+                            .withSourcePath(storageTask.getSourcePath())
                             .build();
                 }
                 try {
                     if (transferAdapter.uploadFile(localWorkingPath,
                             destinationStorageParameters.getContainer(), destinationKey)) {
+                        finalDestinationKey += destinationStorageParameters.getContainer() +
+                                StorageParameters.CLOUD_PATH_SEPARATOR + destinationKey;
+                        logger.trace("Final Destination Key: {}",  finalDestinationKey);
                         return new StorageTaskResultBuilder()
                                 .withSuccess(true)
                                 .withSourcePath(storageTask.getSourcePath())
-                                .withDestinationPath(storageTask.getDestinationPath())
+                                .withDestinationPath(finalDestinationKey)
                                 .build();
                     } else {
                         logger.error("Failed to upload file!");
@@ -225,7 +238,7 @@ public class StorageEngine {
                 logger.trace("Source Path: {}", storageTask.getDestinationPath());
                 logger.trace("Source Storage Provider: {}", destinationStorageParameters.getStorageProvider());
                 try {
-                    Path finalDestinationPath = transferAdapter.downloadObject(sourceStorageParameters.getContainer(),
+                    Path finalDestinationPath = transferAdapter.downloadFile(sourceStorageParameters.getContainer(),
                             sourceStorageParameters.getPrefix(), destinationStorageParameters.getPath());
                     if (finalDestinationPath != null) {
                         Archiver archiver = new ArchiverBuilder().withLogger(logger).build();
@@ -254,7 +267,8 @@ public class StorageEngine {
                             try {
                                 Files.deleteIfExists(finalDestinationPath);
                             } catch (IOException e) {
-                                logger.cpmsError("Failed to clean up downloaded object [{}]", finalDestinationPath);
+                                logger.cpmsError("Failed to clean up downloaded object [{}]",
+                                        finalDestinationPath);
                                 return new StorageTaskResultBuilder()
                                         .withSuccess(false)
                                         .withSourcePath(storageTask.getSourcePath())
@@ -304,228 +318,16 @@ public class StorageEngine {
                             .build();
                 }
             }
-            case "delete": {
-                logger.info("Delete task");
-                // Todo: Implement or delete this section
-                return new StorageTaskResultBuilder().withSuccess(true).build();
-            }
             default: {
                 logger.cpmsError("An invalid StorageJob type [{}] was encountered", storageTask.getAction());
                 return new StorageTaskResultBuilder()
                         .withSuccess(false)
-                        .withErrorMessage(String.format("An invalid StorageJob type [%s] was encountered", storageTask.getAction()))
+                        .withErrorMessage(String.format("An invalid StorageJob type [%s] was encountered",
+                                storageTask.getAction()))
                         .build();
             }
         }
     }
-
-    private boolean uploadBaggedDirectoryToS3(Path localPath, String bucket, String prefix) {
-        logger.trace("uploadBaggedDirectoryToS3('{}','{}','{}')", localPath, bucket, prefix);
-        try {
-            Archiver archiver = new ArchiverBuilder().withLogger(logger).build();
-            S3ObjectStorage objectStorage = new S3ObjectStorageBuilder().withLogger(logger).build();
-            long uncompressedSize = FileUtils.sizeOfDirectory(localPath.toFile());
-            logger.trace("uncompressedSize: {}", humanReadableByteCount(uncompressedSize));
-            try {
-                long freeSpace = Files.getFileStore(localPath).getUsableSpace();
-                logger.trace("freeSpace: {}", humanReadableByteCount(freeSpace));
-                long requiredSpace = uncompressedSize + (1024 * 1024 * 1024);
-                logger.trace("requiredSpace: {}", humanReadableByteCount(requiredSpace));
-                if (requiredSpace > freeSpace) {
-                    logger.cpmsError("Not enough free space to bag up [{}], needs [{}] has [{}]",
-                            localPath.toAbsolutePath(), humanReadableByteCount(requiredSpace),
-                            humanReadableByteCount(freeSpace));
-                    return false;
-                }
-            } catch (IOException e) {
-                logger.cpmsError("Failed to locate path to upload [{}]", localPath);
-                return false;
-            }
-            logger.cpmsInfo("Bagging up [{}]", localPath);
-            Path bagged = archiver.bagItUp(localPath);
-            if (bagged == null || !Files.exists(bagged)) {
-                logger.cpmsError("Failed to bag up directory [{}]", localPath);
-                return false;
-            }
-            logger.cpmsInfo("Verifying bagging on [{}]", localPath);
-            if (!archiver.verifyBag(localPath)) {
-                logger.cpmsError("Failed to bag up directory [{}]", localPath);
-                archiver.debagify(localPath);
-                return false;
-            }
-            logger.cpmsInfo("Boxing up [{}]", localPath.toAbsolutePath());
-            Path boxed = archiver.archive(bagged.toFile());
-            logger.cpmsInfo("Reverting bagging on directory [{}]", localPath);
-            archiver.debagify(localPath);
-            if (boxed == null || !Files.exists(boxed)) {
-                logger.cpmsError("Failed to box up directory [{}]", localPath);
-                return false;
-            }
-            String key = (prefix == null || prefix.isEmpty()) ?
-                    String.format("%s", boxed.getFileName()) :
-                    String.format("%s/%s", prefix, boxed.getFileName());
-            logger.cpmsInfo("Uploading [{}] to [{}/{}]", boxed, bucket, key);
-            boolean success = false;
-            try {
-                success = objectStorage.uploadFile(boxed, bucket, key);
-                Files.delete(boxed);
-                return success;
-            } catch (IOException e) {
-                logger.cpmsError("Failed to upload file [{}] to S3 [{}/{}]", boxed, bucket, key);
-                logger.debug("IOException: {}", ExceptionUtils.getStackTrace(e));
-                return success;
-            }
-        } catch (Exception e) {
-            logger.cpmsError("Failed to upload bagged directory [{}] to S3 [{}/{}]", localPath, bucket, prefix);
-            logger.debug("Exception: {}", ExceptionUtils.getStackTrace(e));
-            return false;
-        }
-    }
-
-    /*private boolean downloadDirectoryOfBaggedFiles(String bucket, String s3Prefix, Path outPath) {
-        logger.trace("downloadDirectoryOfBaggedFiles('{}','{}','{}')", bucket, s3Prefix, outPath);
-        if (!checkSetup(bucket, outPath, true)) {
-            logger.cpmsError("Failed bagged download setup verification");
-            return false;
-        }
-        if (!s3Prefix.endsWith("/"))
-            s3Prefix += "/";
-        long downloadSize = 0L;
-        long largestObject = 0L;
-        List<S3Object> s3Objects = objectStorage.listBucketObjects(bucket, s3Prefix);
-        for (S3Object s3Object : s3Objects) {
-            downloadSize += s3Object.size();
-            if (s3Object.size() > largestObject)
-                largestObject = s3Object.size();
-        }
-        logger.trace("downloadSize: {}", humanReadableByteCount(downloadSize));
-        logger.trace("largestObject: {}", humanReadableByteCount(largestObject));
-        try {
-            long freeSpace = Files.getFileStore(outPath).getUsableSpace();
-            logger.trace("freeSpace: {}", humanReadableByteCount(freeSpace));
-            long requiredSpace = downloadSize + largestObject + (1024 * 1024 * 1024);
-            logger.trace("requiredSpace: {}", humanReadableByteCount(requiredSpace));
-            if (requiredSpace > freeSpace) {
-                logger.cpmsError("Not enough free space in [{}], needs [{}] has [{}]",
-                        outPath.toAbsolutePath(), humanReadableByteCount(requiredSpace),
-                        humanReadableByteCount(freeSpace));
-                return false;
-            }
-        } catch (IOException e) {
-            logger.cpmsError("Invalid path provided: {}", outPath.toAbsolutePath());
-            return false;
-        }
-        for (S3Object s3Object : s3Objects) {
-            int prefixLength = s3Object.key().lastIndexOf("/") + 1;
-            String objectName = s3Object.key().substring(prefixLength);
-            Path boxedPath = outPath.resolve(objectName);
-            Path parentFolder = boxedPath.getParent();
-            try {
-                Files.createDirectories(parentFolder);
-            } catch (IOException e) {
-                logger.cpmsError("Failed to create local parent directory [{}] for sample [{}]",
-                        parentFolder, objectName);
-                return false;
-            }
-            boolean success = downloadBaggedFile(bucket, objectName, parentFolder);
-            if (!success) {
-                logger.cpmsError("Failed to download sample [{}] to [{}]", objectName, parentFolder);
-                return false;
-            }
-        }
-        return true;
-    }*/
-
-    /*private boolean downloadBaggedFile(String bucket, String objectName, Path outPath) {
-        logger.trace("downloadBaggedFile('{}','{}','{}')", bucket, objectName, outPath);
-        logger.trace("Checking setup");
-        if (!checkSetup(bucket, outPath, true)) {
-            logger.cpmsError("Failed bagged download setup verification");
-            return false;
-        }
-        logger.trace("Getting object size");
-        HeadObjectResponse s3Object = objectStorage.headObject(bucket, objectName);
-        long downloadSize = s3Object.contentLength();
-        if (downloadSize < 0L) {
-            logger.cpmsError("Object [{}/{}] does not exist or has an invalid size", bucket, objectName);
-            return false;
-        }
-        logger.trace("Getting object uncompressed size tag");
-        long uncompressedSize = 2 * downloadSize;
-        try {
-            if (s3Object.hasMetadata() && s3Object.metadata().containsKey(CPMSStatics.UNCOMPRESSED_SIZE_METADATA_TAG_KEY))
-                uncompressedSize = Long.parseLong(s3Object.metadata().get(CPMSStatics.UNCOMPRESSED_SIZE_METADATA_TAG_KEY));
-       } catch (NumberFormatException e) {
-            logger.warn("[{}/{}] has an invalid 'uncompressedSize' metadata tag [{}], " +
-                            "assuming twice the download size to be safe",
-                    bucket, objectName, s3Object.metadata().get(CPMSStatics.UNCOMPRESSED_SIZE_METADATA_TAG_KEY));
-        }
-        logger.trace("Formatting paths");
-        int prefix = objectName.lastIndexOf("/") + 1;
-        String object = objectName.substring(prefix);
-        Path boxedPath = outPath.resolve(object);
-        String folder = objectName;
-        int suffix = objectName.lastIndexOf(".tar");
-        if (suffix == -1)
-            suffix = objectName.lastIndexOf(".tgz");
-        if (suffix > 0)
-            folder = objectName.substring(prefix, suffix);
-        Path unboxedPath = outPath.resolve(folder);
-        if (Files.exists(unboxedPath)) {
-            long existingSize = FileUtils.sizeOfDirectory(unboxedPath.toFile());
-            if (uncompressedSize == existingSize) {
-                logger.cpmsInfo("Files for [s3://{}/{}] exist at [{}] and are of the correct size, skipping. " +
-                                "To re-download, delete existing files and resubmit request.",
-                        bucket, objectName, unboxedPath);
-                return true;
-            } else {
-                deleteDirectory(unboxedPath);
-            }
-        }
-        logger.trace("Checking free space");
-        try {
-            long freeSpace = Files.getFileStore(outPath).getUsableSpace();
-            logger.trace("freeSpace: {}", humanReadableByteCount(freeSpace));
-            long requiredSpace = downloadSize + uncompressedSize + (1024 * 1024 * 1024);
-            logger.trace("requiredSpace: {}", humanReadableByteCount(requiredSpace));
-            if (requiredSpace > freeSpace) {
-                logger.cpmsError("Not enough free space in [{}], needs [{}] has [{}]",
-                        outPath.toAbsolutePath(), humanReadableByteCount(requiredSpace),
-                        humanReadableByteCount(freeSpace));
-                return false;
-            }
-        } catch (IOException e) {
-            logger.cpmsError("Invalid path provided: {}", outPath);
-            return false;
-        }
-        logger.cpmsInfo("Downloading [{}/{}] to [{}]", bucket, objectName, boxedPath);
-        if (!objectStorage.downloadObject(bucket, objectName, outPath) || !Files.exists(boxedPath) ||
-                !Files.isRegularFile(boxedPath)) {
-            logger.cpmsError("Failed to download [{}/{}] to [{}]", bucket, objectName, boxedPath);
-            return false;
-        }
-        if (archiver.isArchive(boxedPath)) {
-            logger.cpmsInfo("Unboxing [{}]", boxedPath);
-            if (!archiver.unarchive(boxedPath, outPath) || !Files.exists(unboxedPath) ||
-                    !Files.isDirectory(unboxedPath)) {
-                logger.cpmsError("Failed to unarchive [{}] to [{}]", boxedPath, unboxedPath);
-                return false;
-            }
-            try {
-                Files.deleteIfExists(boxedPath);
-            } catch (IOException e) {
-                logger.cpmsError("Failed to clean up downloaded object [{}]", boxedPath);
-            }
-            logger.cpmsInfo("Verifying [{}] using BagIt data", unboxedPath);
-            if (!archiver.isBag(unboxedPath) || !archiver.verifyBag(unboxedPath)) {
-                logger.cpmsError("[{}] contains missing or invalid BagIt data", unboxedPath);
-                return false;
-            }
-            logger.cpmsInfo("Reverting [{}] to original format", unboxedPath);
-            archiver.debagify(unboxedPath);
-        }
-        return true;
-    }*/
 
     public CPMSLogger getLogger() {
         return logger;
@@ -537,102 +339,5 @@ public class StorageEngine {
 
     public void updateLogger(CPMSLogger logger) {
         this.logger = logger.cloneLogger(StorageEngine.class);
-    }
-
-    /*
-        Private Helper Functions
-     */
-
-    private boolean moveToFolder(Path srcFolder, Path dstFolder) {
-        try {
-            if (!Files.exists(srcFolder)) {
-                logger.error("Folder to move [{}] does not exist", srcFolder.toString()
-                        .replace("\\", "\\\\"));
-                return false;
-            }
-            if (!Files.exists(dstFolder)) {
-                logger.error("Destination folder [{}] does not exist", dstFolder.toString()
-                        .replace("\\", "\\\\"));
-                return false;
-            }
-            try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(srcFolder)) {
-                boolean bSuccess = true;
-                for (Path path : directoryStream) {
-                    if (!movePath(path, dstFolder.resolve(path.getFileName())))
-                        bSuccess = false;
-                }
-                return bSuccess;
-            } catch (IOException e) {
-                logger.error("Failed to move [{}] to folder [{}] : {}",
-                        srcFolder.toString().replace("\\", "\\\\"), dstFolder.toString()
-                                .replace("\\", "\\\\"),
-                        ExceptionUtils.getStackTrace(e).replace("\\", "\\\\"));
-                return false;
-            }
-        } catch (Exception e) {
-            logger.error("Failed to move [{}] to folder [{}] : {}",
-                    srcFolder.toString().replace("\\", "\\\\"), dstFolder.toString()
-                            .replace("\\", "\\\\"),
-                    ExceptionUtils.getStackTrace(e).replace("\\", "\\\\"));
-            return false;
-        }
-    }
-
-    private boolean movePath(Path srcPath, Path dstPath) {
-        try {
-            if (!Files.exists(srcPath)) {
-                logger.error("Folder to move [{}] does not exist", srcPath.toString()
-                        .replace("\\", "\\\\"));
-                return false;
-            }
-            Files.deleteIfExists(dstPath);
-            long started = System.currentTimeMillis();
-            Files.move(srcPath, dstPath, ATOMIC_MOVE);
-            return true;
-        } catch (IOException e) {
-            logger.error("Failed to move [{}] to [{}] : {}",
-                    srcPath.toString().replace("\\", "\\\\"), dstPath.toString()
-                            .replace("\\", "\\\\"),
-                    ExceptionUtils.getStackTrace(e).replace("\\", "\\\\"));
-            return false;
-        }
-    }
-
-    /**
-     * Deletes an entire folder structure
-     * @param folder Path of the folder to delete
-     */
-    private void deleteDirectory(Path folder) {
-        logger.trace("deleteFolder({})", folder);
-        try {
-            Files.walkFileTree(folder, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } catch (IOException e) {
-            logger.error("Failed to delete directory [{}]", folder);
-        }
-    }
-
-    /**
-     * Formats bytecount into human-readable format
-     * @param bytes The number of bytes
-     * @return human-readable formatted String
-     */
-    private static String humanReadableByteCount(long bytes) {
-        int unit = 1000;
-        if (bytes < unit) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(unit));
-        String pre = (/*si ? */"kMGTPE"/* : "KMGTPE"*/).charAt(exp-1) + (/*si ? */""/* : "i"*/);
-        return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
     }
 }

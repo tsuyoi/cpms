@@ -118,7 +118,7 @@ public class StorageTask implements ScriptedTask {
     @Override
     public String toString() {
         return String.format("""
-                        - Storage Task (ID: %s, Name: %s)
+                        \n- Storage Task (ID: %s, Name: %s)
                         \tAction: %s
                         \tSource Path: %s
                         \tDestination Path: %s

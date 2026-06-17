@@ -6,36 +6,20 @@ import java.util.List;
 
 public interface TransferAdapter {
     /**
-     * Lists the top level containers
+     * Determines if a path exists in this provider
      *
-     * @return A String list of the top level container
+     * @param path The path to check
+     * @return Whether the path exists
      */
-    public List<String> listTopLevelContainers();
+    public boolean doesPathExist(String path);
 
     /**
-     *  Determines whether a top level container with this name exists
+     * List the files in a path in this provider
      *
-     * @param containerName The name of the top level container object
-     * @return A boolean indicating the existence of a container with a matching name
+     * @param path The path to list the contents of
+     * @return The contents of the path or an empty list
      */
-    public boolean doesContainerExist(String containerName);
-
-    /**
-     * List the storage objects associated with a top level container name
-     *
-     * @param containerName The name of the top level container object
-     * @return A String list of the objects
-     */
-    public List<String> listObjectsInContainer(String containerName);
-
-    /**
-     * List the storage objects associated with a top level container name with a matching name prefix
-     *
-     * @param containerName The name of the top level container object
-     * @param prefix        A String prefix used to match container objects
-     * @return A String list of matching objects
-     */
-    public List<String> listObjectsInContainer(String containerName, String prefix);
+    public List<String> listFilesInPath(String path);
 
     /**
      * Uploads a local file to the indicated container
@@ -50,7 +34,7 @@ public interface TransferAdapter {
 
 
     /**
-     * Uploads a local file to the indicated container
+     * Downloads a remote file from the supplied location
      *
      * @param container         Name of container in which to upload file
      * @param key               Key to use inside container
@@ -58,5 +42,5 @@ public interface TransferAdapter {
      * @return The final Path object of the downloaded file
      * @throws IOException if the object doesn't exist remotely or local download fails
      */
-    public Path downloadObject(String container, String key, Path destinationFolder) throws IOException;
+    public Path downloadFile(String container, String key, Path destinationFolder) throws IOException;
 }

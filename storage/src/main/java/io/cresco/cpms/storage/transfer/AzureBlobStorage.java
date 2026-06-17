@@ -19,10 +19,12 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unused")
 public class AzureBlobStorage implements TransferAdapter {
     private final String endpoint;
     private final TokenCredential tokenCredential;
@@ -89,7 +91,7 @@ public class AzureBlobStorage implements TransferAdapter {
         logger.debug("uploadFileToBlob({}, {}, {})", uploadPath, container, key);
         if (!Files.exists(uploadPath))
             throw new IOException("file to upload does not exist");
-        if (!doesContainerExist(container))
+        if (!doesBlobContainerExist(container))
             throw new IOException("target container does not exist");
         logger.debug("Computing MD5 checksum of file to upload");
         String localChecksum;
@@ -122,7 +124,7 @@ public class AzureBlobStorage implements TransferAdapter {
 
     private Path downloadBlobToFile(String container, String key, Path destinationDirectory) throws IOException {
         logger.debug("downloadBlob({}, {}, {})", container, key, destinationDirectory);
-        if (!doesContainerExist(container))
+        if (!doesBlobContainerExist(container))
             throw new IOException("target container does not exist");
         if (!doesBlobExist(container, key))
             throw new IOException("target object does not exist");
@@ -201,50 +203,44 @@ public class AzureBlobStorage implements TransferAdapter {
      */
 
     /**
-     * Lists the top level container objects associated with the provided cloud provider credentials
+     * Determines if a path exists in this provider
      *
-     * @return A String list of the top level container objects
+     * @param path The path to check
+     * @return Whether the path exists
      */
     @Override
-    public List<String> listTopLevelContainers() {
-        logger.debug("listTopLevelContainers()");
-        return listContainers().stream().map(BlobContainerItem::getName).collect(Collectors.toList());
+    public boolean doesPathExist(String path) {
+        if (path == null || path.isEmpty()) {
+            return false;
+        } else {
+            String[] parts = path.split("/");
+            if (parts.length < 2)
+                return doesBlobContainerExist(parts[0]);
+            else
+                return doesBlobExist(parts[0], String.join("/",
+                        Arrays.copyOfRange(parts, 1, parts.length)));
+        }
     }
 
     /**
+     * List the files in a path in this provider
      *
-     * @param containerName The name of the top level container object
-     * @return A boolean indicating the existence of a container with a matching name
+     * @param path The path to list the contents of
+     * @return The contents of the path or an empty list
      */
     @Override
-    public boolean doesContainerExist(String containerName) {
-        logger.debug("doesContainerExist({})", containerName);
-        return doesBlobContainerExist(containerName);
-    }
-
-    /**
-     * List the storage objects associated with a top level container name
-     *
-     * @param containerName The name of the top level container object to list contained objects
-     * @return A String list of the objects contained within a cloud storage container
-     */
-    @Override
-    public List<String> listObjectsInContainer(String containerName) {
-        logger.debug("listObjectsInContainer({})", containerName);
-        return listContainerBlobs(containerName).stream().map(BlobItem::getName).collect(Collectors.toList());
-    }
-
-    /**
-     * List the storage objects associated with a top level container name with a matching name prefix
-     *
-     * @param containerName The name of the top level container object to list contained objects
-     * @param prefix        A String prefix to select objects within the supplied container
-     * @return A String list of the objects contained within a cloud storage container with matching prefix
-     */
-    @Override
-    public List<String> listObjectsInContainer(String containerName, String prefix) {
-        logger.debug("listObjectsInContainer({}, {})", containerName, prefix);
-        return listContainerBlobs(containerName, prefix).stream().map(BlobItem::getName).collect(Collectors.toList());
+    public List<String> listFilesInPath(String path) {
+        if (path == null || path.isEmpty()) {
+            return listContainers().stream().map(BlobContainerItem::getName).collect(Collectors.toList());
+        } else {
+            String[] parts = path.split("/");
+            if (parts.length < 2)
+                return listContainerBlobs(parts[0]).stream().map(BlobItem::getName).collect(Collectors.toList());
+            else
+                return listContainerBlobs(parts[0], String.join("/",
+                        Arrays.copyOfRange(parts, 1, parts.length)))
+                        .stream().map(BlobItem::getName).collect(Collectors.toList());
+        }
     }
 
     /**
@@ -262,7 +258,7 @@ public class AzureBlobStorage implements TransferAdapter {
     }
 
     /**
-     * Uploads a local file to the indicated container
+     * Downloads a remote file from the supplied location
      *
      * @param container         Name of container in which to upload file
      * @param key               Key to use inside container
@@ -271,7 +267,7 @@ public class AzureBlobStorage implements TransferAdapter {
      * @throws IOException if the object doesn't exist remotely or local download fails
      */
     @Override
-    public Path downloadObject(String container, String key, Path destinationFolder) throws IOException {
+    public Path downloadFile(String container, String key, Path destinationFolder) throws IOException {
         return downloadBlobToFile(container, key, destinationFolder);
     }
 

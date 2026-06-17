@@ -4,10 +4,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class StorageParameters {
-    private static final String AWS_PREFIX = "s3://";
-    private static final String GCP_PREFIX = "gs://";
-    private static final String AZURE_PREFIX = "azb://";
-    private static final String CLOUD_PATH_SEPARATOR = "/";
+    public static final String AWS_PREFIX = "s3://";
+    public static final String GCP_PREFIX = "gs://";
+    public static final String AZURE_PREFIX = "azb://";
+    public static final String CLOUD_PATH_SEPARATOR = "/";
 
     private final StorageProvider storageProvider;
     private String container;

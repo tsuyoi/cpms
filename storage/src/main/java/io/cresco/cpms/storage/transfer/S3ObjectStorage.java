@@ -18,11 +18,7 @@ import software.amazon.awssdk.transfer.s3.progress.TransferListener;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class S3ObjectStorage implements TransferAdapter {
@@ -140,6 +136,10 @@ public class S3ObjectStorage implements TransferAdapter {
         } catch (SdkException e) {
             logger.error("createBucket Error: {}", e.getMessage());
         }
+    }
+
+    private boolean doesObjectExist(String bucket, String key) {
+        return headObject(bucket, key) != null;
     }
 
     private HeadObjectResponse headObject(String bucket, String key) {
@@ -356,46 +356,44 @@ public class S3ObjectStorage implements TransferAdapter {
     }
 
     /**
-     * Lists the top level container objects associated with the provided cloud provider credentials
+     * Determines if a path exists in this provider
      *
-     * @return A String list of the top level container objects
+     * @param path The path to check
+     * @return Whether the path exists
      */
     @Override
-    public List<String> listTopLevelContainers() {
-        return listBuckets().stream().map(Bucket::name).collect(Collectors.toList());
+    public boolean doesPathExist(String path) {
+        if (path == null || path.isEmpty()) {
+            return false;
+        } else {
+            String[] parts = path.split("/");
+            if (parts.length < 2)
+                return doesBucketExist(parts[0]);
+            else
+                return doesObjectExist(parts[0], String.join("/",
+                        Arrays.copyOfRange(parts, 1, parts.length)));
+        }
     }
 
     /**
+     * List the files in a path in this provider
      *
-     * @param containerName The name of the top level container object
-     * @return A boolean indicating the existence of a container with a matching name
+     * @param path The path to list the contents of
+     * @return The contents of the path or an empty list
      */
     @Override
-    public boolean doesContainerExist(String containerName) {
-        return doesBucketExist(containerName);
-    }
-
-    /**
-     * List the storage objects associated with a top level container name
-     *
-     * @param containerName The name of the top level container object
-     * @return A String list of the objects
-     */
-    @Override
-    public List<String> listObjectsInContainer(String containerName) {
-        return listBucketObjects(containerName).stream().map(S3Object::key).collect(Collectors.toList());
-    }
-
-    /**
-     * List the storage objects associated with a top level container name with a matching name prefix
-     *
-     * @param containerName The name of the top level container object
-     * @param prefix        A String prefix used to match container objects
-     * @return A String list of matching objects
-     */
-    @Override
-    public List<String> listObjectsInContainer(String containerName, String prefix) {
-        return listBucketObjects(containerName, prefix).stream().map(S3Object::key).collect(Collectors.toList());
+    public List<String> listFilesInPath(String path) {
+        if (path == null || path.isEmpty()) {
+            return listBuckets().stream().map(Bucket::name).collect(Collectors.toList());
+        } else {
+            String[] parts = path.split("/");
+            if (parts.length < 2)
+                return listBucketObjects(parts[0]).stream().map(S3Object::key).collect(Collectors.toList());
+            else
+                return listBucketObjects(parts[0], String.join("/",
+                        Arrays.copyOfRange(parts, 1, parts.length)))
+                        .stream().map(S3Object::key).collect(Collectors.toList());
+        }
     }
 
     /**
@@ -413,7 +411,7 @@ public class S3ObjectStorage implements TransferAdapter {
     }
 
     /**
-     * Uploads a local file to the indicated container
+     * Downloads a remote file from the supplied location
      *
      * @param container         Name of container in which to upload file
      * @param key               Key to use inside container
@@ -422,7 +420,7 @@ public class S3ObjectStorage implements TransferAdapter {
      * @throws IOException if the object doesn't exist remotely or local download fails
      */
     @Override
-    public Path downloadObject(String container, String key, Path destinationFolder) throws IOException {
+    public Path downloadFile(String container, String key, Path destinationFolder) throws IOException {
         return downloadObjectToFile(container, key, destinationFolder);
     }
 

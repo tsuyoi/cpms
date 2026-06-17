@@ -159,7 +159,7 @@ public class App {
             if (storageTaskResult.getSuccess())
                 simpleLogger.info("\nSuccessfully completed storage job");
             else
-                simpleLogger.error("\nFailed to complete storage job. Please rerun using -v for more information.");
+                simpleLogger.error(String.format("\nFailed to complete storage job.%s", (verbose) ? "" : " Please rerun using -v for more information."));
         } catch (ExecutionException | ScriptException e) {
             simpleLogger.error(e.getMessage());
         }
