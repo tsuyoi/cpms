@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
@@ -205,70 +206,65 @@ public class AzureBlobStorage implements TransferAdapter {
     /**
      * Determines if a path exists in this provider
      *
-     * @param path The path to check
+     * @param transferPath The path to check
      * @return Whether the path exists
      */
     @Override
-    public boolean doesPathExist(String path) {
-        if (path == null || path.isEmpty()) {
+    public boolean doesPathExist(TransferPath transferPath) {
+        if (transferPath == null)
             return false;
-        } else {
-            String[] parts = path.split("/");
-            if (parts.length < 2)
-                return doesBlobContainerExist(parts[0]);
-            else
-                return doesBlobExist(parts[0], String.join("/",
-                        Arrays.copyOfRange(parts, 1, parts.length)));
-        }
+        if (transferPath.getPath() != null)
+            return doesBlobExist(transferPath.getContainer(), transferPath.getPath());
+        return doesBlobContainerExist(transferPath.getContainer());
     }
 
     /**
      * List the files in a path in this provider
      *
-     * @param path The path to list the contents of
+     * @param transferPath The path to list the contents of
      * @return The contents of the path or an empty list
      */
     @Override
-    public List<String> listFilesInPath(String path) {
-        if (path == null || path.isEmpty()) {
-            return listContainers().stream().map(BlobContainerItem::getName).collect(Collectors.toList());
+    public List<String> listFilesInPath(TransferPath transferPath) {
+        if (transferPath == null)
+            return List.of();
+        if (transferPath.getContainer() != null) {
+            if (transferPath.getPath() != null) {
+                return listContainerBlobs(transferPath.getContainer(), transferPath.getPath()).stream()
+                        .map(BlobItem::getName).collect(Collectors.toList());
+            } else {
+                return listContainerBlobs(transferPath.getContainer()).stream()
+                        .map(BlobItem::getName).collect(Collectors.toList());
+            }
         } else {
-            String[] parts = path.split("/");
-            if (parts.length < 2)
-                return listContainerBlobs(parts[0]).stream().map(BlobItem::getName).collect(Collectors.toList());
-            else
-                return listContainerBlobs(parts[0], String.join("/",
-                        Arrays.copyOfRange(parts, 1, parts.length)))
-                        .stream().map(BlobItem::getName).collect(Collectors.toList());
+            return listContainers().stream().map(BlobContainerItem::getName).collect(Collectors.toList());
         }
     }
 
     /**
      * Uploads a local file to the indicated container
      *
-     * @param uploadPath Path of local file to upload
-     * @param container  Name of container in which to upload file
-     * @param key        Key to use inside container
+     * @param uploadPath    Path of local file to upload
+     * @param transferPath  Remote path for upload
      * @return Whether the file was successfully uploaded
      * @throws IOException if uploadPath doesn't exist locally or container doesn't exist remotely
      */
     @Override
-    public boolean uploadFile(Path uploadPath, String container, String key) throws IOException {
-        return uploadFileToBlob(uploadPath, container, key);
+    public boolean uploadFile(Path uploadPath, TransferPath transferPath) throws IOException {
+        return uploadFileToBlob(uploadPath, transferPath.getContainer(), transferPath.getPath());
     }
 
     /**
      * Downloads a remote file from the supplied location
      *
-     * @param container         Name of container in which to upload file
-     * @param key               Key to use inside container
+     * @param transferPath  Remote path for upload
      * @param destinationFolder The folder in which to download the remote object
      * @return The final Path object of the downloaded file
      * @throws IOException if the object doesn't exist remotely or local download fails
      */
     @Override
-    public Path downloadFile(String container, String key, Path destinationFolder) throws IOException {
-        return downloadBlobToFile(container, key, destinationFolder);
+    public Path downloadFile(TransferPath transferPath, Path destinationFolder) throws IOException {
+        return downloadBlobToFile(transferPath.getContainer(), transferPath.getPath(), destinationFolder);
     }
 
     private static class CrescoAzureLoggingTransferListener implements ProgressListener {

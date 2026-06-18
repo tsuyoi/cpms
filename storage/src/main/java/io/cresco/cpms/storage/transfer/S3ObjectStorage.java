@@ -358,70 +358,66 @@ public class S3ObjectStorage implements TransferAdapter {
     /**
      * Determines if a path exists in this provider
      *
-     * @param path The path to check
+     * @param transferPath The path to check
      * @return Whether the path exists
      */
     @Override
-    public boolean doesPathExist(String path) {
-        if (path == null || path.isEmpty()) {
+    public boolean doesPathExist(TransferPath transferPath) {
+        if (transferPath == null)
             return false;
-        } else {
-            String[] parts = path.split("/");
-            if (parts.length < 2)
-                return doesBucketExist(parts[0]);
-            else
-                return doesObjectExist(parts[0], String.join("/",
-                        Arrays.copyOfRange(parts, 1, parts.length)));
-        }
+        if (transferPath.getPath() != null)
+            return doesObjectExist(transferPath.getContainer(),  transferPath.getPath());
+        return doesBucketExist(transferPath.getContainer());
     }
 
     /**
      * List the files in a path in this provider
      *
-     * @param path The path to list the contents of
+     * @param transferPath The path to list the contents of
      * @return The contents of the path or an empty list
      */
     @Override
-    public List<String> listFilesInPath(String path) {
-        if (path == null || path.isEmpty()) {
+    public List<String> listFilesInPath(TransferPath transferPath) {
+        if (transferPath == null)
+            return List.of();
+        if (transferPath.getContainer() != null) {
+            if (transferPath.getPath() != null) {
+                return listBucketObjects(transferPath.getContainer(), transferPath.getPath()).stream()
+                        .map(S3Object::key).collect(Collectors.toList());
+            } else {
+                return listBucketObjects(transferPath.getContainer()).stream()
+                        .map(S3Object::key).collect(Collectors.toList());
+            }
+        }
+        else {
             return listBuckets().stream().map(Bucket::name).collect(Collectors.toList());
-        } else {
-            String[] parts = path.split("/");
-            if (parts.length < 2)
-                return listBucketObjects(parts[0]).stream().map(S3Object::key).collect(Collectors.toList());
-            else
-                return listBucketObjects(parts[0], String.join("/",
-                        Arrays.copyOfRange(parts, 1, parts.length)))
-                        .stream().map(S3Object::key).collect(Collectors.toList());
         }
     }
 
     /**
      * Uploads a local file to the indicated container
      *
-     * @param uploadPath Path of local file to upload
-     * @param container  Name of container in which to upload file
-     * @param key        Key to use inside container
+     * @param uploadPath    Path of local file to upload
+     * @param transferPath  Remote path for upload
      * @return Whether the file was successfully uploaded
      * @throws IOException if uploadPath doesn't exist locally or container doesn't exist remotely
      */
     @Override
-    public boolean uploadFile(Path uploadPath, String container, String key) throws IOException {
-        return uploadFileToBucket(uploadPath, container, key);
+    public boolean uploadFile(Path uploadPath, TransferPath transferPath) throws IOException {
+        return uploadFileToBucket(uploadPath, transferPath.getContainer(), transferPath.getPath());
     }
 
     /**
      * Downloads a remote file from the supplied location
      *
-     * @param container         Name of container in which to upload file
-     * @param key               Key to use inside container
+     * @param transferPath  Remote path for upload
      * @param destinationFolder The folder in which to download the remote object
      * @return The final Path object of the downloaded file
      * @throws IOException if the object doesn't exist remotely or local download fails
      */
     @Override
-    public Path downloadFile(String container, String key, Path destinationFolder) throws IOException {
-        return downloadObjectToFile(container, key, destinationFolder);
+    public Path downloadFile(TransferPath transferPath, Path destinationFolder) throws IOException {
+        return downloadObjectToFile(transferPath.getContainer(), transferPath.getPath(), destinationFolder);
     }
 
     private static class CrescoS3LoggingTransferListener implements TransferListener {

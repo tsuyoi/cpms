@@ -52,28 +52,21 @@ public class StorageEngine {
                 logger.trace("Source Storage Provider: {}", sourceStorageParameters.getStorageProvider());
                 logger.trace("Source Container: {}", sourceStorageParameters.getContainer());
                 logger.trace("Source Prefix: {}", sourceStorageParameters.getPrefix());
+                TransferPath sourceTransferPath = sourceStorageParameters.getTransferPath();
                 TransferAdapter transferAdapter;
                 if (sourceStorageParameters.getStorageProvider() == StorageProvider.AWS) {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
                 } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
+                } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.local) {
+                    transferAdapter = new FileSystemStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             sourceStorageParameters.getStorageProvider().name());
                     return new StorageTaskResultBuilder().withSuccess(false).withSourcePath(storageTask.getSourcePath())
                             .build();
                 }
-                if (sourceStorageParameters.getPrefix() != null) {
-                    transferAdapter.listFilesInPath(String.format("%s%s%s",
-                            sourceStorageParameters.getContainer(),
-                            StorageParameters.CLOUD_PATH_SEPARATOR,
-                            sourceStorageParameters.getPrefix())).forEach(System.out::println);
-                } else if (sourceStorageParameters.getContainer() != null) {
-                    transferAdapter.listFilesInPath(sourceStorageParameters.getContainer())
-                            .forEach(System.out::println);
-                } else {
-                    transferAdapter.listFilesInPath("").forEach(System.out::println);
-                }
+                transferAdapter.listFilesInPath(sourceTransferPath).forEach(System.out::println);
                 return new StorageTaskResultBuilder().withSuccess(true).withSourcePath(storageTask.getSourcePath())
                         .build();
             }
@@ -161,8 +154,9 @@ public class StorageEngine {
                 }
                 destinationKey += localWorkingPath.getFileName();
                 logger.trace("Destination Key: {}",  destinationKey);
-                String finalDestinationKey
-                        ;
+                String finalDestinationKey;
+                TransferPath destinationTransferPath = new TransferPath(destinationStorageParameters.getContainer(),
+                        destinationKey);
                 TransferAdapter transferAdapter;
                 if (destinationStorageParameters.getStorageProvider() == StorageProvider.AWS) {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
@@ -170,6 +164,9 @@ public class StorageEngine {
                 } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                     finalDestinationKey = StorageParameters.AZURE_PREFIX;
+                } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.local) {
+                    transferAdapter = new FileSystemStorageBuilder().withLogger(logger).build();
+                    finalDestinationKey = "";
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             destinationStorageParameters.getStorageProvider().name());
@@ -179,10 +176,11 @@ public class StorageEngine {
                             .build();
                 }
                 try {
-                    if (transferAdapter.uploadFile(localWorkingPath,
-                            destinationStorageParameters.getContainer(), destinationKey)) {
-                        finalDestinationKey += destinationStorageParameters.getContainer() +
-                                StorageParameters.CLOUD_PATH_SEPARATOR + destinationKey;
+                    if (transferAdapter.uploadFile(localWorkingPath, destinationTransferPath)) {
+                        if (destinationStorageParameters.getContainer() != null)
+                            finalDestinationKey += destinationStorageParameters.getContainer() +
+                                StorageParameters.CLOUD_PATH_SEPARATOR;
+                        finalDestinationKey += destinationKey;
                         logger.trace("Final Destination Key: {}",  finalDestinationKey);
                         return new StorageTaskResultBuilder()
                                 .withSuccess(true)
@@ -224,11 +222,14 @@ public class StorageEngine {
                 logger.trace("Source Storage Provider: {}", sourceStorageParameters.getStorageProvider());
                 logger.trace("Source Container: {}", sourceStorageParameters.getContainer());
                 logger.trace("Source Prefix: {}", sourceStorageParameters.getPrefix());
+                TransferPath sourceTransferPath = sourceStorageParameters.getTransferPath();
                 TransferAdapter transferAdapter;
                 if (sourceStorageParameters.getStorageProvider() == StorageProvider.AWS) {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
                 } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
+                } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.local) {
+                    transferAdapter = new FileSystemStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             sourceStorageParameters.getStorageProvider().name());
@@ -238,8 +239,7 @@ public class StorageEngine {
                 logger.trace("Source Path: {}", storageTask.getDestinationPath());
                 logger.trace("Source Storage Provider: {}", destinationStorageParameters.getStorageProvider());
                 try {
-                    Path finalDestinationPath = transferAdapter.downloadFile(sourceStorageParameters.getContainer(),
-                            sourceStorageParameters.getPrefix(), destinationStorageParameters.getPath());
+                    Path finalDestinationPath = transferAdapter.downloadFile(sourceTransferPath, destinationStorageParameters.getPath());
                     if (finalDestinationPath != null) {
                         Archiver archiver = new ArchiverBuilder().withLogger(logger).build();
                         if (archiver.isArchive(finalDestinationPath)) {

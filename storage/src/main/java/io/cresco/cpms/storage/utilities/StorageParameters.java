@@ -1,5 +1,7 @@
 package io.cresco.cpms.storage.utilities;
 
+import io.cresco.cpms.storage.transfer.TransferPath;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -31,6 +33,7 @@ public class StorageParameters {
             parseCloudPath(cloudPath);
         } else {
             this.storageProvider = StorageProvider.local;
+            this.prefix = path;
             this.path = Paths.get(path);
         }
     }
@@ -65,5 +68,13 @@ public class StorageParameters {
 
     public Path getPath() {
         return path;
+    }
+
+    public TransferPath getTransferPath() {
+        if (storageProvider == StorageProvider.AWS || storageProvider == StorageProvider.GCS ||  storageProvider == StorageProvider.Azure) {
+            return new TransferPath(container, prefix);
+        } else {
+            return new TransferPath(path.toString());
+        }
     }
 }

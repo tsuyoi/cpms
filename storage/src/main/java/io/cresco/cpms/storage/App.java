@@ -11,24 +11,18 @@ import io.cresco.cpms.scripting.StorageTask;
 import io.cresco.cpms.statics.ArchiveCompression;
 import io.cresco.cpms.statics.BagItType;
 import io.cresco.cpms.storage.encapsulation.Archiver;
-import io.cresco.cpms.storage.transfer.AzureBlobStorage;
-import io.cresco.cpms.storage.transfer.AzureBlobStorageBuilder;
-import io.cresco.cpms.storage.transfer.S3ObjectStorage;
-import io.cresco.cpms.storage.transfer.S3ObjectStorageBuilder;
+import io.cresco.cpms.storage.encapsulation.ArchiverBuilder;
+import io.cresco.cpms.storage.transfer.*;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.impl.type.ReflectArgumentType;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
-import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.builder.fluent.Configurations;
-import org.apache.commons.configuration2.ex.ConfigurationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,24 +64,33 @@ public class App {
         seLogger.setLevel(Level.toLevel("INFO"));
         final ch.qos.logback.classic.Logger arcLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Archiver.class);
         arcLogger.setLevel(Level.toLevel("INFO"));
-        final ch.qos.logback.classic.Logger azbbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorageBuilder.class);
+        final ch.qos.logback.classic.Logger arcbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(ArchiverBuilder.class);
+        arcbLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger azbbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorage.class);
         azbbLogger.setLevel(Level.toLevel("INFO"));
-        final ch.qos.logback.classic.Logger azbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorage.class);
+        final ch.qos.logback.classic.Logger azbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AzureBlobStorageBuilder.class);
         azbLogger.setLevel(Level.toLevel("INFO"));
-        final ch.qos.logback.classic.Logger osLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorageBuilder.class);
+        final ch.qos.logback.classic.Logger osLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorage.class);
         osLogger.setLevel(Level.toLevel("INFO"));
-        final ch.qos.logback.classic.Logger osbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorage.class);
+        final ch.qos.logback.classic.Logger osbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorageBuilder.class);
         osbLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger fsLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(FileSystemStorage.class);
+        fsLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger fsbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(FileSystemStorageBuilder.class);
+        fsbLogger.setLevel(Level.toLevel("INFO"));
 
         if (verbose) {
             meLogger.setLevel(Level.toLevel("TRACE"));
             appLogger.setLevel(Level.toLevel("TRACE"));
             seLogger.setLevel(Level.toLevel("TRACE"));
             arcLogger.setLevel(Level.toLevel("TRACE"));
+            arcbLogger.setLevel(Level.toLevel("TRACE"));
             azbbLogger.setLevel(Level.toLevel("TRACE"));
             azbLogger.setLevel(Level.toLevel("TRACE"));
             osLogger.setLevel(Level.toLevel("TRACE"));
             osbLogger.setLevel(Level.toLevel("TRACE"));
+            fsLogger.setLevel(Level.toLevel("TRACE"));
+            fsbLogger.setLevel(Level.toLevel("TRACE"));
         }
 
         logger.trace("Checking for a command");
