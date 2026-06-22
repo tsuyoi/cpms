@@ -14,14 +14,14 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Stream;
 
-public class FileSystemStorage implements TransferAdapter {
+public class LocalFileSystemStorage implements TransferAdapter {
     private CPMSLogger logger;
 
     /**
      * Object Storage Constructer utilizing the Builder paradigm
      * @param builder - Builder object
      */
-    public FileSystemStorage(FileSystemStorageBuilder builder) {
+    public LocalFileSystemStorage(LocalFileSystemStorageBuilder builder) {
         setLogger(builder.getLogger());
     }
 
@@ -136,10 +136,10 @@ public class FileSystemStorage implements TransferAdapter {
     }
 
     public void setLogger(CPMSLogger logger) {
-        this.logger = logger.cloneLogger(FileSystemStorage.class);
+        this.logger = logger.cloneLogger(LocalFileSystemStorage.class);
     }
 
     public void updateLogger(CPMSLogger logger) {
-        this.logger = logger.cloneLogger(FileSystemStorage.class);
+        this.logger = logger.cloneLogger(LocalFileSystemStorage.class);
     }
 }

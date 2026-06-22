@@ -74,10 +74,14 @@ public class App {
         osLogger.setLevel(Level.toLevel("INFO"));
         final ch.qos.logback.classic.Logger osbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(S3ObjectStorageBuilder.class);
         osbLogger.setLevel(Level.toLevel("INFO"));
-        final ch.qos.logback.classic.Logger fsLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(FileSystemStorage.class);
-        fsLogger.setLevel(Level.toLevel("INFO"));
-        final ch.qos.logback.classic.Logger fsbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(FileSystemStorageBuilder.class);
-        fsbLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger lfsLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LocalFileSystemStorage.class);
+        lfsLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger lfsbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LocalFileSystemStorageBuilder.class);
+        lfsbLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger rfsLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(RemoteFileSystemStorage.class);
+        rfsLogger.setLevel(Level.toLevel("INFO"));
+        final ch.qos.logback.classic.Logger rfsbLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(RemoteFileSystemStorageBuilder.class);
+        rfsbLogger.setLevel(Level.toLevel("INFO"));
 
         if (verbose) {
             meLogger.setLevel(Level.toLevel("TRACE"));
@@ -89,8 +93,10 @@ public class App {
             azbLogger.setLevel(Level.toLevel("TRACE"));
             osLogger.setLevel(Level.toLevel("TRACE"));
             osbLogger.setLevel(Level.toLevel("TRACE"));
-            fsLogger.setLevel(Level.toLevel("TRACE"));
-            fsbLogger.setLevel(Level.toLevel("TRACE"));
+            lfsLogger.setLevel(Level.toLevel("TRACE"));
+            lfsbLogger.setLevel(Level.toLevel("TRACE"));
+            rfsLogger.setLevel(Level.toLevel("TRACE"));
+            rfsbLogger.setLevel(Level.toLevel("TRACE"));
         }
 
         logger.trace("Checking for a command");

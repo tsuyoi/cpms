@@ -58,8 +58,10 @@ public class StorageEngine {
                     transferAdapter = new S3ObjectStorageBuilder().withLogger(logger).build();
                 } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
+                } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.remote) {
+                    transferAdapter = new RemoteFileSystemStorageBuilder().withLogger(logger).build();
                 } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.local) {
-                    transferAdapter = new FileSystemStorageBuilder().withLogger(logger).build();
+                    transferAdapter = new LocalFileSystemStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             sourceStorageParameters.getStorageProvider().name());
@@ -164,8 +166,11 @@ public class StorageEngine {
                 } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                     finalDestinationKey = StorageParameters.AZURE_PREFIX;
+                } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.remote) {
+                    transferAdapter = new RemoteFileSystemStorageBuilder().withLogger(logger).build();
+                    finalDestinationKey = StorageParameters.REMOTE_PREFIX;
                 } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.local) {
-                    transferAdapter = new FileSystemStorageBuilder().withLogger(logger).build();
+                    transferAdapter = new LocalFileSystemStorageBuilder().withLogger(logger).build();
                     finalDestinationKey = "";
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
@@ -178,8 +183,15 @@ public class StorageEngine {
                 try {
                     if (transferAdapter.uploadFile(localWorkingPath, destinationTransferPath)) {
                         if (destinationStorageParameters.getContainer() != null)
-                            finalDestinationKey += destinationStorageParameters.getContainer() +
-                                StorageParameters.CLOUD_PATH_SEPARATOR;
+                            if (destinationStorageParameters.getStorageProvider() == StorageProvider.AWS ||
+                                    destinationStorageParameters.getStorageProvider() == StorageProvider.GCS ||
+                                    destinationStorageParameters.getStorageProvider() == StorageProvider.Azure) {
+                                finalDestinationKey += destinationStorageParameters.getContainer() +
+                                        StorageParameters.CLOUD_PATH_SEPARATOR;
+                            } else if (destinationStorageParameters.getStorageProvider() == StorageProvider.remote) {
+                                finalDestinationKey += destinationStorageParameters.getContainer() +
+                                        StorageParameters.REMOTE_HOST_SEPARATOR;
+                            }
                         finalDestinationKey += destinationKey;
                         logger.trace("Final Destination Key: {}",  finalDestinationKey);
                         return new StorageTaskResultBuilder()
@@ -229,7 +241,7 @@ public class StorageEngine {
                 } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                     transferAdapter = new AzureBlobStorageBuilder().withLogger(logger).build();
                 } else if (sourceStorageParameters.getStorageProvider() == StorageProvider.local) {
-                    transferAdapter = new FileSystemStorageBuilder().withLogger(logger).build();
+                    transferAdapter = new LocalFileSystemStorageBuilder().withLogger(logger).build();
                 } else {
                     logger.error("Storage provider [{}] is not implemented yet!",
                             sourceStorageParameters.getStorageProvider().name());

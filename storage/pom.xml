@@ -96,6 +96,14 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.github.mwiede</groupId>
+            <artifactId>jsch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.fracpete</groupId>
+            <artifactId>rsync4j-all</artifactId>
+        </dependency>
         <!-- For App Only -->
         <dependency>
             <groupId>net.sourceforge.argparse4j</groupId>
