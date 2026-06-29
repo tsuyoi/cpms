@@ -1,6 +1,8 @@
 package io.cresco.cpms.storage;
 
 import ch.qos.logback.classic.Level;
+import com.google.gson.Gson;
+import io.cresco.cpms.exceptions.StorageExecutionException;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.processing.ExecutionException;
@@ -8,6 +10,7 @@ import io.cresco.cpms.processing.StorageEngine;
 import io.cresco.cpms.processing.StorageTaskResult;
 import io.cresco.cpms.scripting.ScriptException;
 import io.cresco.cpms.scripting.StorageTask;
+import io.cresco.cpms.scripting.StorageTaskScript;
 import io.cresco.cpms.statics.ArchiveCompression;
 import io.cresco.cpms.statics.BagItType;
 import io.cresco.cpms.storage.encapsulation.Archiver;
@@ -23,6 +26,9 @@ import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,6 +108,7 @@ public class App {
         logger.trace("Checking for a command");
         if (command == null) {
             simpleLogger.info("Commands:");
+            simpleLogger.info("\t- script <path_to_json>");
             simpleLogger.info("\t- list <path>");
             simpleLogger.info("\t- upload <local_path_or_file> <remote_path>");
             simpleLogger.info("\t- download <remote_path_or_object> <local_path>");
@@ -111,6 +118,12 @@ public class App {
         logger.debug("Command: {}", command);
         logger.debug("Parameters: {}", parameters);
         switch (command) {
+            case "script":
+                if (parameters.size() != 1) {
+                    simpleLogger.error("script usage: <path_to_json>");
+                    return;
+                }
+                break;
             case "list":
                 if (parameters.size() != 1) {
                     simpleLogger.info("list usage: <path>");
@@ -139,14 +152,30 @@ public class App {
             return;
         }
         logger.trace("Building storage task");
+        StorageTaskScript storageTaskScript = null;
         Map<String, String> storageTaskJSON = new HashMap<>();
-        storageTaskJSON.put("id", "cli-task-id");
-        storageTaskJSON.put("name", "cli-task-name");
-        storageTaskJSON.put("type", "storage");
-        storageTaskJSON.put("action", command);
         logger.trace("JSON: {}", storageTaskJSON);
         try {
             switch (command) {
+                case "script":
+                    Gson gson = new Gson();
+                    try (FileReader scriptReader = new FileReader(parameters.getFirst())) {
+                        storageTaskScript = gson.fromJson(scriptReader, StorageTaskScript.class);
+                        if (storageTaskScript.type == null || !storageTaskScript.type.equals("storage")) {
+                            logger.error("Invalid storage task type in script: {}", storageTaskScript.type);
+                            return;
+                        }
+                        storageTaskScript.id = "cli-task-id";
+                        storageTaskScript.name = "cli-task-name";
+                    } catch (FileNotFoundException e) {
+                        logger.error("Script file [{}] does not exist",  parameters.getFirst());
+                        return;
+                    } catch (IOException e) {
+                        logger.error("Failed to read in script file [{}]: {}",
+                                parameters.getFirst(), e.getMessage());
+                        return;
+                    }
+                    break;
                 case "list":
                     storageTaskJSON.put("source_path", parameters.getFirst());
                     break;
@@ -164,13 +193,24 @@ public class App {
                 default:
                     break;
             }
-            StorageTaskResult storageTaskResult = storageEngine.runStorageJob(new StorageTask(storageTaskJSON));
+            StorageTask storageTask;
+            if (storageTaskScript != null) {
+                storageTask = new StorageTask(storageTaskScript);
+            } else {
+                storageTaskJSON.put("id", "cli-task-id");
+                storageTaskJSON.put("name", "cli-task-name");
+                storageTaskJSON.put("type", "storage");
+                storageTaskJSON.put("action", command);
+                storageTask =  new StorageTask(storageTaskJSON);
+            }
+            StorageTaskResult storageTaskResult = storageEngine.runStorageJob(storageTask);
             if (storageTaskResult.getSuccess())
                 simpleLogger.info("\nSuccessfully completed storage job");
             else
-                simpleLogger.error(String.format("\nFailed to complete storage job.%s", (verbose) ? "" : " Please rerun using -v for more information."));
-        } catch (ExecutionException | ScriptException e) {
-            simpleLogger.error(e.getMessage());
+                simpleLogger.error("\nERROR: Failed to complete storage job.{}",
+                        (verbose) ? "" : " Please rerun using -v for more information.");
+        } catch (ExecutionException | ScriptException | StorageExecutionException e) {
+            simpleLogger.error("\nERROR: Failed to execute storage job: {}", e.getMessage());
         }
     }
 }

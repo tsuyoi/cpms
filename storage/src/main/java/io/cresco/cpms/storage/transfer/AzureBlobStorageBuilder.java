@@ -3,10 +3,11 @@ package io.cresco.cpms.storage.transfer;
 import com.azure.core.credential.BasicAuthenticationCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.azure.identity.UsernamePasswordCredentialBuilder;
+import io.cresco.cpms.exceptions.StorageExecutionException;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 
+@SuppressWarnings("unused")
 public class AzureBlobStorageBuilder {
     private String endpoint;
     private TokenCredential tokenCredential;
@@ -36,7 +37,7 @@ public class AzureBlobStorageBuilder {
         return this;
     }
 
-    public AzureBlobStorage build() {
+    public AzureBlobStorage build() throws StorageExecutionException {
         AzureBlobStorage azureBlobStorage = new AzureBlobStorage(this);
         validateAzureBlobStorageObject(azureBlobStorage);
         return azureBlobStorage;

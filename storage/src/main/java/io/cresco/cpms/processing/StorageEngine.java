@@ -1,5 +1,6 @@
 package io.cresco.cpms.processing;
 
+import io.cresco.cpms.exceptions.StorageExecutionException;
 import io.cresco.cpms.logging.BasicCPMSLoggerBuilder;
 import io.cresco.cpms.logging.CPMSLogger;
 import io.cresco.cpms.scripting.StorageTask;
@@ -39,7 +40,7 @@ public class StorageEngine {
      * @return A StorageTaskResult object with information about the success of the job execution
      * @throws ExecutionException If there was a failure in job execution
      */
-    public StorageTaskResult runStorageJob(StorageTask storageTask) throws ExecutionException {
+    public StorageTaskResult runStorageJob(StorageTask storageTask) throws ExecutionException, StorageExecutionException {
         logger.debug("runStorageJob({})", storageTask);
         if (storageTask == null) {
             logger.cpmsError("Submitted storage job cannot be null");
@@ -184,7 +185,7 @@ public class StorageEngine {
                     if (transferAdapter.uploadFile(localWorkingPath, destinationTransferPath)) {
                         if (destinationStorageParameters.getContainer() != null)
                             if (destinationStorageParameters.getStorageProvider() == StorageProvider.AWS ||
-                                    destinationStorageParameters.getStorageProvider() == StorageProvider.GCS ||
+                                    //destinationStorageParameters.getStorageProvider() == StorageProvider.GCS ||
                                     destinationStorageParameters.getStorageProvider() == StorageProvider.Azure) {
                                 finalDestinationKey += destinationStorageParameters.getContainer() +
                                         StorageParameters.CLOUD_PATH_SEPARATOR;

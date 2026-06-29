@@ -9,6 +9,7 @@ import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.*;
 import com.azure.storage.blob.options.BlobDownloadToFileOptions;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
+import io.cresco.cpms.exceptions.StorageExecutionException;
 import io.cresco.cpms.logging.CPMSLogger;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -19,8 +20,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,7 +35,9 @@ public class AzureBlobStorage implements TransferAdapter {
         Constructors
      */
 
-    public AzureBlobStorage(AzureBlobStorageBuilder builder) {
+    public AzureBlobStorage(AzureBlobStorageBuilder builder) throws StorageExecutionException {
+        if (builder.getEndpoint() == null)
+            throw new StorageExecutionException("Azure Storage Endpoint not provided");
         this.endpoint = builder.getEndpoint();
         this.tokenCredential = builder.getTokenCredential();
         setLogger(builder.getLogger());
